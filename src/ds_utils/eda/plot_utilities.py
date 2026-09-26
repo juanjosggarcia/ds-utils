@@ -1,60 +1,62 @@
-from typing import Literal
-from numpy.typing import ArrayLike
-import pandas as pd
-from pandas.tseries.frequencies import to_offset
+from ds_utils.preprocessing.feature_config import FEATURES_CONFIG
+
 import numpy as np
-from enum import Enum
-from IPython.display import display, HTML
-from datetime import datetime
+import pandas as pd
+from typing import Literal, Protocol
+from numpy.typing import ArrayLike
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-
-from sklearn.metrics import mean_absolute_error, mean_squared_error
-from sklearn.base import TransformerMixin
 
 
 # region AUX Class -------------------------------------------------------------
 
-# class Alignment(Enum):
-#     LEFT = "left"
-#     CENTER = "center"
-#     RIGHT = "right"
+class Transformer(Protocol):
+    """Protocol for objects implementing a fit-transform operation."""
 
-# class Color(Enum):
-#     BLACK = "#000000"
-#     WHITE = "#ffffff"
-#     ORANGE = "#e64a19"
-#     BLUE = "#1976d2"
-#     PURPLE = "#7b1fa2"
-#     YELLOW = "#fbc02d"
-#     GREEN = "#2e7d32"
-#     RED = "#d32f2f"
-#     GRAY = "#4e4e4e"
+    def fit_transform(self, X):
+        """Fit the transformer and transform the input data."""
+        ...
 
-# endregion --------------------------------------------------------------------
+# endregion AUX Class ----------------------------------------------------------
 
 # region CONSTANTS -------------------------------------------------------------
 
-# DEFAULT_COLOR = Color.WHITE
-# """
-# the default color, which is important for ensuring consistency with the editor's light and dark themes
-# """
-
-# endregion --------------------------------------------------------------------
+# endregion CONSTANTS ----------------------------------------------------------
 
 # region Aux Functions ---------------------------------------------------------
 
 def bold(text: str) -> str:
     return rf"$\bf{{{text}}}$"
 
-# endregion --------------------------------------------------------------------
+# endregion Aux Functions ------------------------------------------------------
 
 # region Plots Functions -------------------------------------------------------
 
-def plot_circular_feature(df, col_sin, col_cos, title="Representación Cíclica"):
+def plot_circular_feature(
+    df: pd.DataFrame,
+    col_sin: str,
+    col_cos: str,
+    title: str = "Representación Cíclica"
+) -> None:
     """
-    Generate a scatter plot to verify the correct transformation 
-    of variables in the circular coordinate system (Sine/Cosine).
+    Plot a circular feature representation using sine and cosine components.
+
+    This visualization helps verify that a cyclic variable has been correctly
+    transformed into sine and cosine components.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing the sine and cosine feature columns.
+
+    col_sin : str
+        Name of the column containing the sine component.
+
+    col_cos : str
+        Name of the column containing the cosine component.
+
+    title : str, default="Representación Cíclica"
+        Figure title.
     """
     
     plt.figure(figsize=(6, 6))
@@ -65,36 +67,35 @@ def plot_circular_feature(df, col_sin, col_cos, title="Representación Cíclica"
     plt.axvline(0, color='black', linewidth=0.5, ls='--')
     
     plt.title(title)
-    plt.xlabel(f"cos({col_cos})")
-    plt.ylabel(f"sin({col_sin})")
+    plt.xlabel(col_cos)
+    plt.ylabel(col_sin)
     plt.grid(True, alpha=0.3)
     plt.show()
 
 
-
 def plot_sensor_signals(
-    df,
+    df: pd.DataFrame,
     col_time: str,
     tolerances: dict[str, float],
-    clean_suffix: str = "_clean",
-    noise_suffix: str = "_is_noise",
 ) -> None:
     """
-    Plot the raw and cleaned signals for each sensor, highlighting detected
-    noise samples.
+    Plot raw and cleaned sensor signals, highlighting detected noise samples.
 
     Parameters
     ----------
-    df : pandas.DataFrame
+    df : pd.DataFrame
         DataFrame containing the sensor data.
+
     col_time : str
         Name of the column containing the time values.
+
     tolerances : dict[str, float]
         Mapping of sensor names to their corresponding noise thresholds.
-    clean_suffix : str, default="_clean"
-        Suffix used to identify each sensor's cleaned signal.
-    noise_suffix : str, default="_is_noise"
-        Suffix used to identify each sensor's noise flag column.
+
+    Notes
+    -----
+    The names of the cleaned-signal and noise-indicator columns are derived from
+    the suffixes defined in ``FEATURES_CONFIG``.
     """
 
     if col_time not in df.columns:
@@ -119,7 +120,7 @@ def plot_sensor_signals(
         )
 
         # Clean signal
-        clean_col = f"{sensor}{clean_suffix}"
+        clean_col = f"{sensor}{FEATURES_CONFIG.CLEAN_SUFFIX}"
         if clean_col in df.columns:
             plt.plot(
                 df[col_time],
@@ -130,7 +131,7 @@ def plot_sensor_signals(
             )
 
         # Detected noise
-        noise_col = f"{sensor}{noise_suffix}"
+        noise_col = f"{sensor}{FEATURES_CONFIG.IS_NOISE_SUFFIX}"
         if noise_col in df.columns:
             noise_df = df[df[noise_col]]
             plt.scatter(
@@ -141,421 +142,15 @@ def plot_sensor_signals(
                 label="Ruido Detectado",
             )
 
-        # plt.title(f"Análisis de Ruido en '{sensor}' (Umbral: > {threshold})")
         plt.title(
             rf"Análisis de Ruido en '{sensor}' $\bf{{(Umbral: >\ {threshold})}}$"
         )
         plt.xlabel("Tiempo")
-        # plt.xlabel(col_time)
         plt.ylabel(sensor)
         plt.grid(True, alpha=0.3)
         plt.legend()
         plt.tight_layout()
         plt.show()
-
-
-# def plot_sensor_signals(
-#     df: pd.DataFrame,
-#     time_column: str,
-#     sensors: list[str],
-#     clean_suffix: str = "_clean",
-#     noise_suffix: str = "_is_noise",
-# ) -> None:
-#     """
-#     Plot the raw and cleaned signals for each sensor, highlighting detected
-#     noise samples.
-
-#     Parameters
-#     ----------
-#     df : pandas.DataFrame
-#         DataFrame containing the sensor data.
-#     time_column : str
-#         Name of the column containing the time values.
-#     sensors : list[str]
-#         List of sensor names to visualize.
-#     clean_suffix : str, default="_clean"
-#         Suffix used to identify each sensor's cleaned signal.
-#     noise_suffix : str, default="_is_noise"
-#         Suffix used to identify each sensor's noise flag column.
-#     """
-
-#     if time_column not in df.columns:
-#         raise ValueError(f"Column '{time_column}' not found in DataFrame.")
-
-#     for sensor in sensors:
-
-#         if sensor not in df.columns:
-#             print(f"Sensor '{sensor}' not found. Skipping.")
-#             continue
-
-#         plt.figure(figsize=(15, 5))
-
-#         # Raw signal
-#         plt.plot(
-#             df[time_column],
-#             df[sensor],
-#             color="darkgray",
-#             alpha=0.9,
-#             linewidth=1.2,
-#             label="Raw",
-#         )
-
-#         # Clean signal
-#         clean_col = f"{sensor}{clean_suffix}"
-#         if clean_col in df.columns:
-#             plt.plot(
-#                 df[time_column],
-#                 df[clean_col],
-#                 color="green",
-#                 linewidth=2,
-#                 label="Limpio",
-#             )
-
-#         # Detected noise
-#         noise_col = f"{sensor}{noise_suffix}"
-#         if noise_col in df.columns:
-#             noise_df = df[df[noise_col]]
-#             plt.scatter(
-#                 noise_df[time_column],
-#                 noise_df[sensor],
-#                 color="red",
-#                 s=20,
-#                 label="Ruido Detectado",
-#             )
-
-#         plt.title(f"Análisis de Ruido en el sensor '{sensor}'")
-#         # plt.xlabel(time_column)
-#         plt.xlabel("Tiempo")
-#         plt.ylabel(sensor)
-#         plt.grid(True, alpha=0.3)
-#         plt.legend()
-#         plt.tight_layout()
-#         plt.show()
-
-
-
-
-
-# def plot_feature_space_projection(
-#     features: pd.DataFrame,
-#     projection: Literal["pca", "tsne", "umap"] = "pca",
-#     standardize: bool = False,
-#     random_state: int | None = None,
-#     title: str | None = None,
-#     figsize: tuple[int, int] = (8, 8),
-# ) -> None:
-#     """
-#     Visualize the feature space using a two-dimensional projection.
-
-#     The feature matrix is projected onto two dimensions using either PCA or
-#     UMAP. This visualization is intended for exploratory data analysis to
-#     inspect the overall geometry of the feature space, such as clusters,
-#     isolated observations or variations in local density.
-
-#     The projection does not represent the decision boundary or behaviour of
-#     any anomaly detection model.
-
-#     Parameters
-#     ----------
-#     features : pd.DataFrame
-#         Feature matrix.
-
-#     projection : {"pca", "tsne", "umap"}, default="pca"
-#         Dimensionality reduction technique used for the projection.
-
-#     standardize : bool, default=False
-#         Whether to standardize the features before computing the projection.
-
-#     random_state : int, optional
-#         Random state used by the projection algorithm.
-
-#     title : str, optional
-#         Figure title.
-
-#     figsize : tuple[int, int], default=(8, 8)
-#         Figure size.
-#     """
-
-#     if projection not in ("pca", "tsne", "umap"):
-#         raise ValueError("projection must be 'pca' or 'umap'")
-
-#     X = features
-
-#     if standardize:
-#         from sklearn.preprocessing import StandardScaler
-
-#         X = StandardScaler().fit_transform(X)
-
-#     if projection == "pca":
-#         from sklearn.decomposition import PCA
-
-#         reducer = PCA(
-#             n_components=2,
-#             random_state=random_state,
-#         )
-
-#     elif projection == "tsne":
-#         from sklearn.manifold import TSNE
-
-#         reducer = TSNE(
-#             n_components=2,
-#             random_state=random_state,
-#             init="pca",
-#             learning_rate="auto",
-#         )
-
-#     elif projection == "umap":
-
-#         try:
-#             import umap
-#         except ImportError as exc:
-#             raise ImportError(
-#                 "UMAP projection requires the 'umap-learn' package."
-#             ) from exc
-
-#         reducer = umap.UMAP(
-#             n_components=2,
-#             random_state=random_state,
-#         )
-
-#     else:
-#         raise ValueError(
-#             f"Unknown projection method: {projection!r}."
-#         )
-
-#     X_proj = reducer.fit_transform(X)
-
-#     fig, ax = plt.subplots(figsize=figsize)
-
-#     ax.scatter(
-#         X_proj[:, 0],
-#         X_proj[:, 1],
-#         s=15,
-#         alpha=0.7,
-#     )
-
-#     ax.set_xlabel("Component 1")
-#     ax.set_ylabel("Component 2")
-
-#     if title is not None:
-#         ax.set_title(title)
-
-#     elif projection == "pca":
-
-#         explained_variance = reducer.explained_variance_ratio_.sum()
-
-#         ax.set_title(
-#             f"PCA projection (2D projection retains {explained_variance:.1%} of the original information)"
-#         )
-
-#     else:
-
-#         ax.set_title(f"{projection.upper()} projection")
-
-#     ax.grid(alpha=0.3)
-
-#     fig.tight_layout()
-
-#     plt.show()
-
-
-
-
-
-
-def plot_feature_space_projection(
-    features: pd.DataFrame,
-    projection: Literal["pca", "tsne", "umap"] = "pca",
-    scaler: TransformerMixin | None = None,
-    anomaly_scores: ArrayLike | None = None,
-    anomaly_threshold: float | None = None,
-    random_state: int | None = None,
-    title: str | None = None,
-    figsize: tuple[int, int] = (10, 8),
-) -> None:
-    """
-    Visualize the feature space using a two-dimensional projection.
-
-    The feature matrix is projected onto two dimensions using PCA, t-SNE or
-    UMAP. This visualization is intended for exploratory data analysis to
-    inspect the overall geometry of the feature space, such as clusters,
-    isolated observations or variations in local density.
-
-    Optionally, anomaly scores can be displayed either as a continuous colour
-    gradient or as a binary normal/anomaly classification using a decision
-    threshold.
-
-    The projection does not represent the decision boundary or behaviour of
-    any anomaly detection model.
-
-    Parameters
-    ----------
-    features : pd.DataFrame
-        Feature matrix.
-
-    projection : {"pca", "tsne", "umap"}, default="pca"
-        Dimensionality reduction technique used for the projection.
-
-    scaler : TransformerMixin, optional
-        Scikit-learn compatible transformer implementing
-        ``fit_transform()``, such as ``StandardScaler`` or
-        ``RobustScaler``. If ``None``, the features are projected without
-        preprocessing.
-
-    anomaly_scores : ArrayLike, optional
-        Anomaly scores associated with each observation. When provided
-        without an anomaly threshold, the scores are displayed as a
-        continuous colour gradient. When an anomaly threshold is also
-        provided, observations are classified as normal or anomalous.
-
-    anomaly_threshold : float, optional
-        Threshold used to classify observations as anomalies.
-        Observations with scores below the threshold are highlighted as
-        anomalies.
-
-    random_state : int, optional
-        Random state used by the projection algorithm.
-
-    title : str, optional
-        Figure title.
-
-    figsize : tuple[int, int], default=(8, 8)
-        Figure size.
-    """
-
-    if projection not in ("pca", "tsne", "umap"):
-        raise ValueError(
-            "projection must be one of {'pca', 'tsne', 'umap'}."
-        )
-
-    POINT_SIZE = 25
-    ALPHA = 0.7
-
-    X = features
-
-    if scaler is not None:
-        X = scaler.fit_transform(X)
-
-    match projection:
-
-        case "pca":
-
-            from sklearn.decomposition import PCA
-
-            reducer = PCA(
-                n_components=2,
-                random_state=random_state,
-            )
-
-        case "tsne":
-
-            from sklearn.manifold import TSNE
-
-            reducer = TSNE(
-                n_components=2,
-                init="pca",
-                learning_rate="auto",
-                random_state=random_state,
-            )
-
-        case "umap":
-
-            try:
-                import umap
-            except ImportError as exc:
-                raise ImportError(
-                    "UMAP projection requires the 'umap-learn' package."
-                ) from exc
-
-            reducer = umap.UMAP(
-                n_components=2,
-                random_state=random_state,
-            )
-
-    X_proj = reducer.fit_transform(X)
-
-    # ------------------------------------
-    # VISUALIZACIÓN
-    # ------------------------------------
-
-    fig, ax = plt.subplots(figsize=figsize)
-
-    if anomaly_scores is None:
-
-        ax.scatter(
-            X_proj[:, 0],
-            X_proj[:, 1],
-            s=POINT_SIZE,
-            alpha=ALPHA,
-        )
-
-    elif anomaly_threshold is None:
-
-        scatter = ax.scatter(
-            X_proj[:, 0],
-            X_proj[:, 1],
-            c=anomaly_scores,
-            cmap="inferno", # "viridis", "inferno", "plasma"
-            s=POINT_SIZE,
-            alpha=ALPHA,
-        )
-
-        fig.colorbar(
-            scatter,
-            ax=ax,
-            label="Anomaly score",
-        )
-
-    else:
-
-        anomaly_mask = np.asarray(anomaly_scores) < anomaly_threshold
-
-        ax.scatter(
-            X_proj[~anomaly_mask, 0],
-            X_proj[~anomaly_mask, 1],
-            s=POINT_SIZE,
-            alpha=ALPHA,
-            label="Normal",
-        )
-
-        ax.scatter(
-            X_proj[anomaly_mask, 0],
-            X_proj[anomaly_mask, 1],
-            s=POINT_SIZE,
-            alpha=ALPHA,
-            color="red",
-            label="Anomaly",
-        )
-
-        ax.legend()
-
-
-    ax.set_xlabel("Component 1")
-    ax.set_ylabel("Component 2")
-
-    # Oculta los valores de los ejes que no representan una variable real
-    ax.set_xticks([])
-    ax.set_yticks([])
-
-    if title is None:
-
-        title = f"{projection.upper()} projection"
-
-    if projection == "pca":
-
-        explained = reducer.explained_variance_ratio_.sum()
-
-        title += f" (2D projection retains {explained:.1%} of the original information)"
-
-
-    ax.set_title(title)
-
-    ax.grid(alpha=0.3)
-
-    fig.tight_layout()
-
-    plt.show()
-
 
 
 def plot_model_anomaly_scores(
@@ -590,7 +185,7 @@ def plot_model_anomaly_scores(
         Figure size.
     """
 
-    anomaly_mask = df[col_score] < anomaly_threshold
+    anomaly_mask = df[col_score] <= anomaly_threshold
 
     fig, ax = plt.subplots(figsize=figsize)
 
@@ -638,7 +233,6 @@ def plot_model_anomaly_scores(
     plt.show()
 
 
-
 def plot_model_anomaly_score_distribution(
     df: pd.DataFrame,
     col_score: str,
@@ -668,7 +262,7 @@ def plot_model_anomaly_score_distribution(
     title : str, optional
         Figure title.
 
-    figsize : tuple[int, int], default=(10, 5)
+    figsize : tuple[int, int], default=(15, 5)
         Figure size.
     """
 
@@ -717,28 +311,43 @@ def plot_model_anomaly_score_distribution(
     plt.show()
 
 
-
 def plot_model_predictions(
-    y_real,
-    y_pred,
-    mae=None,
-    title="Rendimiento del modelo",
-    steps=None,
-    color_real="black",
-    color_pred="green"
-):
+    y_real: pd.Series,
+    y_pred: ArrayLike,
+    mae: float | None = None,
+    title: str = "Rendimiento del modelo",
+    steps: int | None = None,
+    color_real: str = "black",
+    color_pred: str = "green",
+) -> None:
     """
-    Plots real vs predicted values.
+    Plot real and predicted values over the observation sequence.
 
     Parameters
     ----------
     y_real : pd.Series
-    y_pred : array-like
+        Observed target values. A DatetimeIndex is used for the x-axis when
+        available.
+
+    y_pred : ArrayLike
+        Predicted target values.
+
     mae : float, optional
-        If None, it will not be displayed.
-    title : str
+        Mean absolute error displayed in the figure title. If ``None``, the MAE
+        is computed from ``y_real`` and ``y_pred``.
+
+    title : str, default="Rendimiento del modelo"
+        Figure title.
+
     steps : int, optional
-        If provided, limits plot to first N samples.
+        Number of initial observations to plot. If ``None``, all observations
+        are plotted.
+
+    color_real : str, default="black"
+        Color used for the observed values.
+
+    color_pred : str, default="green"
+        Color used for the predicted values.
     """
 
     # Slice if needed
@@ -754,7 +363,10 @@ def plot_model_predictions(
 
     # MAE fallback
     if mae is None:
-        mae = mean_absolute_error(y_real, y_pred)
+        # from sklearn.metrics import mean_absolute_error
+        # mae = mean_absolute_error(y_real, y_pred)
+
+        mae = np.mean(np.abs(np.asarray(y_real) - np.asarray(y_pred)))
 
     plt.figure(figsize=(15, 6))
     plt.plot(x_axis, y_real, label="Realidad", color=color_real, alpha=0.7)
@@ -768,74 +380,78 @@ def plot_model_predictions(
     plt.show()
 
 
-
-# def show_model_old(y_test_real, y_test_preds, mae_test=None, title="Rendimiento Modelo"):
-#     """
-#     Grafica la realidad y la predicción.
-    
-#     Y_test: pd.Series con valores reales
-#     test_preds: np.array o lista con predicciones
-#     mae_test: float, MAE del test
-#     title: str, título opcional
-#     """
-#     # Si Y_test tiene índice temporal, lo usamos; si no, creamos rango numérico
-#     x_axis = y_test_real.index if isinstance(y_test_real.index, pd.DatetimeIndex) else range(len(y_test_real))
-
-#     if mae_test is not None:
-#         mae_test = mean_absolute_error(y_test_real, y_test_preds)
-    
-#     plt.figure(figsize=(15, 6))
-#     plt.plot(x_axis, y_test_real, label='Realidad', color='black', alpha=0.7)
-#     plt.plot(x_axis, y_test_preds, label='Predicción', color='green', linestyle='--', alpha=0.8)
-    
-#     plt.title(f"{title} — MAE: {mae_test:.4f}")
-#     plt.xlabel("Tiempo")
-#     plt.ylabel("Valor")
-#     plt.legend()
-#     plt.grid(True, alpha=0.3)
-#     plt.show()
-
-
-# def show_model_2(y_test, y_test_preds, mae_test, pasos):
-#     # pasos = 12 * 48 # 48 horas
-#     plt.figure(figsize=(15, 7))
-#     plt.plot(y_test.index[:pasos], y_test.iloc[:pasos], label='Realidad', color='black', alpha=0.7)
-#     plt.plot(y_test.index[:pasos], y_test_preds[:pasos], label='IA Optimizada (Optuna)', color='green', linestyle='--')
-#     plt.title(f'Rendimiento Final: MAE {mae_test:.4f}')
-#     plt.legend()
-#     plt.grid(True, alpha=0.3)
-#     plt.show()
-
-
 def plot_model_feature_importance(
     modelo,
-    X,
-    top_n=15,
-    title=None
-):
+    X: pd.DataFrame | ArrayLike,
+    top_n: int = 15,
+    title: str | None = None,
+) -> pd.Series:
     """
-    Muestra importancia de variables SOLO si el modelo lo soporta nativamente.
+    Plot the native feature importance of a fitted model.
 
-    Soporta:
-    - Árboles / ensembles (feature_importances_)
-    - CatBoost / similares (get_feature_importance)
-    - Modelos lineales (coef_)
+    The function extracts feature importance from the final estimator of a
+    pipeline when applicable. It supports tree-based models through
+    ``feature_importances_``, models exposing ``get_feature_importance()``,
+    LightGBM models using gain-based importance, and linear models through
+    ``coef_``.
 
-    NO calcula nada extra (no permutation importance).
+    No additional importance method, such as permutation importance, is
+    calculated.
 
-    Example:
-    '''
-    Regresión lineal
-    plot_feature_importance_general(modelo_lr, X_train)
+    Parameters
+    ----------
+    modelo : object
+        Fitted model or pipeline from which to extract feature importance.
 
-    → usa coef_
+    X : pd.DataFrame or array-like
+        Feature matrix used to determine the feature names. If ``X`` is a
+        DataFrame, its column names are used. Otherwise, generic names in the
+        form ``"feature_0"``, ``"feature_1"``, etc. are generated.
 
-    Random Forest
-    plot_feature_importance_general(modelo_rf, X_train)
+    top_n : int, default=15
+        Number of most important features to display.
 
-    → usa feature_importances_
+    title : str, optional
+        Figure title. If ``None``, the title ``"Top {top_n} Features"`` is
+        used.
 
-    '''
+    Returns
+    -------
+    pd.Series
+        Feature importances for the selected top features, sorted in ascending
+        order for horizontal bar plotting.
+
+    Raises
+    ------
+    NotImplementedError
+        If the fitted model does not expose a supported native feature
+        importance interface.
+
+    ValueError
+        If the number of extracted feature importances does not match the
+        number of features in ``X``.
+
+    Notes
+    -----
+    For linear models with multiple outputs or classes, the importance of
+    each feature is calculated as the mean absolute coefficient across
+    outputs or classes.
+
+    For LightGBM models, gain-based feature importance is used instead of the
+    default split-based importance.
+
+    Examples
+    --------
+    Tree-based model:
+
+    >>> plot_model_feature_importance(modelo_rf, X_train)
+
+    Linear model:
+
+    >>> plot_model_feature_importance(modelo_lr, X_train)
+
+    Both cases use the native feature importance interface exposed by the
+    fitted model.
     """
 
     # ---------------------------
@@ -916,4 +532,215 @@ def plot_model_feature_importance(
     return top_feats
 
 
-# endregion --------------------------------------------------------------------
+# endregion Plots --------------------------------------------------------------
+
+
+# region Plots Functions with "lazy import" ------------------------------------
+
+def plot_feature_space_projection(
+    features: pd.DataFrame,
+    projection: Literal["pca", "tsne", "umap"] = "pca",
+    scaler: Transformer | None = None,
+    anomaly_scores: ArrayLike | None = None,
+    anomaly_threshold: float | None = None,
+    random_state: int | None = None,
+    title: str | None = None,
+    figsize: tuple[int, int] = (10, 8),
+) -> None:
+    """
+    Visualize the feature space using a two-dimensional projection.
+
+    The feature matrix is projected onto two dimensions using PCA, t-SNE or
+    UMAP. This visualization is intended for exploratory data analysis to
+    inspect the overall geometry of the feature space, such as clusters,
+    isolated observations or variations in local density.
+
+    Optionally, anomaly scores can be displayed either as a continuous colour
+    gradient or as a binary normal/anomaly classification using a decision
+    threshold.
+
+    The projection does not represent the decision boundary or behaviour of
+    any anomaly detection model.
+
+    Parameters
+    ----------
+    features : pd.DataFrame
+        Feature matrix.
+
+    projection : {"pca", "tsne", "umap"}, default="pca"
+        Dimensionality reduction technique used for the projection.
+
+    scaler : Transformer, optional
+        Transformer implementing ``fit_transform()`` such as
+        ``StandardScaler`` or ``RobustScaler``.
+
+    anomaly_scores : ArrayLike, optional
+        Anomaly scores associated with each observation. When provided
+        without an anomaly threshold, the scores are displayed as a
+        continuous colour gradient. When an anomaly threshold is also
+        provided, observations are classified as normal or anomalous.
+
+    anomaly_threshold : float, optional
+        Threshold used to classify observations as anomalies.
+        Observations with scores below the threshold are highlighted as
+        anomalies.
+
+    random_state : int, optional
+        Random state used by the projection algorithm.
+
+    title : str, optional
+        Figure title.
+
+    figsize : tuple[int, int], default=(10, 8)
+        Figure size.
+
+    Notes
+    -----
+    The ``"pca"`` and ``"tsne"`` projections require ``scikit-learn``.
+    The ``"umap"`` projection requires ``umap-learn``.
+    """
+
+    if projection not in ("pca", "tsne", "umap"):
+        raise ValueError(
+            "projection must be one of {'pca', 'tsne', 'umap'}."
+        )
+
+    POINT_SIZE = 25
+    ALPHA = 0.7
+
+    X = features
+
+    if scaler is not None:
+        X = scaler.fit_transform(X)
+
+    match projection:
+
+        case "pca":
+
+            try:
+                from sklearn.decomposition import PCA
+            except ImportError as exc:
+                raise ImportError(
+                    "PCA projection requires the 'scikit-learn' package."
+                ) from exc
+
+            reducer = PCA(
+                n_components=2,
+                random_state=random_state,
+            )
+
+        case "tsne":
+
+            try:
+                from sklearn.manifold import TSNE
+            except ImportError as exc:
+                raise ImportError(
+                    "t-SNE projection requires the 'scikit-learn' package."
+                ) from exc
+
+            reducer = TSNE(
+                n_components=2,
+                init="pca",
+                learning_rate="auto",
+                random_state=random_state,
+            )
+
+        case "umap":
+
+            try:
+                import umap
+            except ImportError as exc:
+                raise ImportError(
+                    "UMAP projection requires the 'umap-learn' package."
+                ) from exc
+
+            reducer = umap.UMAP(
+                n_components=2,
+                random_state=random_state,
+            )
+
+    X_proj = reducer.fit_transform(X)
+
+    # ------------------------------------
+    # VISUALIZACIÓN
+    # ------------------------------------
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    if anomaly_scores is None:
+
+        ax.scatter(
+            X_proj[:, 0],
+            X_proj[:, 1],
+            s=POINT_SIZE,
+            alpha=ALPHA,
+        )
+
+    elif anomaly_threshold is None:
+
+        scatter = ax.scatter(
+            X_proj[:, 0],
+            X_proj[:, 1],
+            c=anomaly_scores,
+            cmap="inferno", # "viridis", "inferno", "plasma"
+            s=POINT_SIZE,
+            alpha=ALPHA,
+        )
+
+        fig.colorbar(
+            scatter,
+            ax=ax,
+            label="Anomaly score",
+        )
+
+    else:
+
+        anomaly_mask = np.asarray(anomaly_scores) <= anomaly_threshold
+
+        ax.scatter(
+            X_proj[~anomaly_mask, 0],
+            X_proj[~anomaly_mask, 1],
+            s=POINT_SIZE,
+            alpha=ALPHA,
+            label="Normal",
+        )
+
+        ax.scatter(
+            X_proj[anomaly_mask, 0],
+            X_proj[anomaly_mask, 1],
+            s=POINT_SIZE,
+            alpha=ALPHA,
+            color="red",
+            label="Anomaly",
+        )
+
+        ax.legend()
+
+
+    ax.set_xlabel("Component 1")
+    ax.set_ylabel("Component 2")
+
+    # Oculta los valores de los ejes que no representan una variable real
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    if title is None:
+
+        title = f"{projection.upper()} projection"
+
+    if projection == "pca":
+
+        explained = reducer.explained_variance_ratio_.sum()
+
+        title += f" (2D projection retains {explained:.1%} of the original information)"
+
+
+    ax.set_title(title)
+
+    ax.grid(alpha=0.3)
+
+    fig.tight_layout()
+
+    plt.show()
+
+# endregion Plots Functions with "lazy import" ---------------------------------

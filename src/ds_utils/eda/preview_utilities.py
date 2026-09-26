@@ -1,8 +1,8 @@
 from ds_utils.eda.types import Alignment, Color
 
+import numpy as np
 import pandas as pd
 from pandas.tseries.frequencies import to_offset
-import numpy as np
 from enum import Enum
 from IPython.display import display, HTML
 from datetime import datetime
@@ -26,7 +26,7 @@ from datetime import datetime
 #     RED = "#d32f2f"
 #     GRAY = "#4e4e4e"
 
-# endregion --------------------------------------------------------------------
+# endregion AUX Class ----------------------------------------------------------
 
 # region CONSTANTS -------------------------------------------------------------
 
@@ -35,14 +35,68 @@ DEFAULT_COLOR = Color.WHITE
 the default color, which is important for ensuring consistency with the editor's light and dark themes
 """
 
-# endregion --------------------------------------------------------------------
+# endregion CONSTANTS ----------------------------------------------------------
 
 # region Aux Functions ---------------------------------------------------------
 
-def bold(text: str) -> str:
-    return rf"$\bf{{{text}}}$"
+def format_time_gap(freq: str, periods: int) -> str:
+    """
+    Returns a human-readable representation of a temporal gap.
 
-# endregion --------------------------------------------------------------------
+    Args:
+        freq:
+            Pandas offset alias representing the sampling frequency
+            (e.g., ``"30s"``, ``"5min"``, ``"1h"``, ``"1D"``).
+        periods:
+            Number of consecutive sampling periods composing the gap.
+
+    Returns:
+        Human-readable string representing the total gap duration
+        (e.g., ``"30 minutos"``, ``"2 horas"``, ``"1 día"``).
+
+    Raises:
+        ValueError:
+            If ``freq`` is not a valid pandas fixed-frequency offset alias
+            or represents a frequency greater than days (e.g., ``"2W"``, ``"1ME"``).
+    """
+
+    # Validar freq
+    try:
+        offset = to_offset(freq)
+
+        if offset.name not in {"s", "min", "h", "D"}:
+            raise ValueError(
+                "Only fixed frequencies up to one day are supported ('s', 'min', 'h', 'D')."
+            )
+
+        delta = pd.Timedelta(offset)
+
+    except ValueError:
+        raise ValueError(f"Invalid freq '{freq}'")
+
+    # total_seconds = int(offset.delta.total_seconds() * periods)
+    total_seconds = int(delta.total_seconds() * periods)
+
+    match total_seconds:
+        case s if s % 86400 == 0:
+            value = s // 86400
+            unit = "día" if value == 1 else "días"
+
+        case s if s % 3600 == 0:
+            value = s // 3600
+            unit = "hora" if value == 1 else "horas"
+
+        case s if s % 60 == 0:
+            value = s // 60
+            unit = "minuto" if value == 1 else "minutos"
+
+        case _:
+            value = total_seconds
+            unit = "segundo" if value == 1 else "segundos"
+
+    return f"{value} {unit}"
+
+# endregion Aux Functions ------------------------------------------------------
 
 # region Preview Functions -----------------------------------------------------
 
@@ -717,61 +771,8 @@ Total de registros con ruido encontrados: {total_noise}
 
 
 
-# endregion --------------------------------------------------------------------
+# endregion Preview Functions --------------------------------------------------
 
-def format_time_gap(freq: str, periods: int) -> str:
-    """
-    Returns a human-readable representation of a temporal gap.
+# region Preview Functions with "lazy import" ----------------------------------
 
-    Args:
-        freq:
-            Pandas offset alias representing the sampling frequency
-            (e.g., ``"30s"``, ``"5min"``, ``"1h"``, ``"1D"``).
-        periods:
-            Number of consecutive sampling periods composing the gap.
-
-    Returns:
-        Human-readable string representing the total gap duration
-        (e.g., ``"30 minutos"``, ``"2 horas"``, ``"1 día"``).
-
-    Raises:
-        ValueError:
-            If ``freq`` is not a valid pandas fixed-frequency offset alias
-            or represents a frequency greater than days (e.g., ``"2W"``, ``"1ME"``).
-    """
-
-    # Validar freq
-    try:
-        offset = to_offset(freq)
-
-        if offset.name not in {"s", "min", "h", "D"}:
-            raise ValueError(
-                "Only fixed frequencies up to one day are supported ('s', 'min', 'h', 'D')."
-            )
-
-        delta = pd.Timedelta(offset)
-
-    except ValueError:
-        raise ValueError(f"Invalid freq '{freq}'")
-
-    # total_seconds = int(offset.delta.total_seconds() * periods)
-    total_seconds = int(delta.total_seconds() * periods)
-
-    match total_seconds:
-        case s if s % 86400 == 0:
-            value = s // 86400
-            unit = "día" if value == 1 else "días"
-
-        case s if s % 3600 == 0:
-            value = s // 3600
-            unit = "hora" if value == 1 else "horas"
-
-        case s if s % 60 == 0:
-            value = s // 60
-            unit = "minuto" if value == 1 else "minutos"
-
-        case _:
-            value = total_seconds
-            unit = "segundo" if value == 1 else "segundos"
-
-    return f"{value} {unit}"
+# endregion Preview Functions with "lazy import" -------------------------------

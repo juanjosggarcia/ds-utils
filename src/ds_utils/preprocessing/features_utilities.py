@@ -1,34 +1,36 @@
+from ds_utils.preprocessing.feature_config import FEATURES_CONFIG
+
+import numpy as np
+import pandas as pd
 from dataclasses import dataclass
 from typing import Collection, Literal, TypeAlias
 from numpy.typing import ArrayLike
 from collections.abc import Sequence
-import pandas as pd
 from pandas.tseries.frequencies import to_offset
-import numpy as np
 from enum import Enum
 from datetime import datetime
 
 # region AUX Class -------------------------------------------------------------
 
-@dataclass(frozen=True)
-class FeatureNamingConfig:
-    """Naming convention used by the feature engineering utilities."""
+# @dataclass(frozen=True)
+# class FeatureNamingConfig:
+#     """Naming convention used by the feature engineering utilities."""
 
-    CLEAN_SUFFIX: str = "_clean"
-    IS_NOISE_SUFFIX: str = "_is_noise"
+#     CLEAN_SUFFIX: str = "_clean"
+#     IS_NOISE_SUFFIX: str = "_is_noise"
 
-    DIFF_SUFFIX: str = "_diff"
-    DIFF_CLEAN_SUFFIX: str = "_diff_clean"
+#     DIFF_SUFFIX: str = "_diff"
+#     DIFF_CLEAN_SUFFIX: str = "_diff_clean"
 
-    NOISE_MAGNITUDE_SUFFIX: str = "_noise_magnitude"
-    ROLLING_STD_SUFFIX: str = "_rolling_std"
+#     NOISE_MAGNITUDE_SUFFIX: str = "_noise_magnitude"
+#     ROLLING_STD_SUFFIX: str = "_rolling_std"
 
-    GLOBAL_NOISE_COLUMN: str = "any_sensor_noise"
+#     GLOBAL_NOISE_COLUMN: str = "any_sensor_noise"
 
-    ROLLING_WINDOW: int = 5
+#     ROLLING_WINDOW: int = 5
 
-# FeatureNamingConfig instance
-_FEATURES_CONFIG = FeatureNamingConfig()
+# # FeatureNamingConfig instance
+# _FEATURES_CONFIG = FeatureNamingConfig()
 
 # endregion AUX Class ----------------------------------------------------------
 
@@ -275,7 +277,7 @@ def handle_sensor_noise(
     df: pd.DataFrame, 
     tolerances: dict, 
     window: int = 3, 
-    add_ml_features: bool = False
+    add_extra_features: bool = False
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Handle sensor noise detection and correction.
@@ -319,7 +321,7 @@ def handle_sensor_noise(
     Notes
     -----
     The names of generated columns depend on the suffix configuration
-    defined in ``_FEATURES_CONFIG``.
+    defined in ``FEATURES_CONFIG``.
 
     After applying this function, ``remove_redundant_sensor_noise_columns``
     can be optionally used to remove generated noise features that do not
@@ -359,14 +361,14 @@ def handle_sensor_noise(
                     sensor_clean[i] = sensor_clean[i-1]
                     is_noise[i] = True
         
-        df[f"{sensor}{_FEATURES_CONFIG.CLEAN_SUFFIX}"] = sensor_clean
-        df[f"{sensor}{_FEATURES_CONFIG.IS_NOISE_SUFFIX}"] = is_noise
+        df[f"{sensor}{FEATURES_CONFIG.CLEAN_SUFFIX}"] = sensor_clean
+        df[f"{sensor}{FEATURES_CONFIG.IS_NOISE_SUFFIX}"] = is_noise
 
         # acumular ruido global, si alguna vez cualquier sensor marca True en esa fila, la fila queda marcada como True
         noise_global_mask |= is_noise
         
         # Features extra para ML
-        if add_ml_features:
+        if add_extra_features:
             # diff original
             diff = np.abs(vals - np.roll(vals, 1))
             diff[0] = 0
@@ -375,27 +377,27 @@ def handle_sensor_noise(
             diff_clean = np.abs(sensor_clean - np.roll(sensor_clean, 1))
             diff_clean[0] = 0
 
-            df[f"{sensor}{_FEATURES_CONFIG.DIFF_SUFFIX}"] = diff
-            df[f"{sensor}{_FEATURES_CONFIG.DIFF_CLEAN_SUFFIX}"] = diff_clean
+            df[f"{sensor}{FEATURES_CONFIG.DIFF_SUFFIX}"] = diff
+            df[f"{sensor}{FEATURES_CONFIG.DIFF_CLEAN_SUFFIX}"] = diff_clean
 
             # magnitud del ruido (muy útil)
-            df[f"{sensor}{_FEATURES_CONFIG.NOISE_MAGNITUDE_SUFFIX}"] = np.abs(vals - sensor_clean)
+            df[f"{sensor}{FEATURES_CONFIG.NOISE_MAGNITUDE_SUFFIX}"] = np.abs(vals - sensor_clean)
 
             # detecta estabilidad del sensor (muy útil) **IMPORTANTE** Rolling sobre señal limpia
             rolling_std = (
                 pd.Series(sensor_clean)
                 .rolling(
-                    window=_FEATURES_CONFIG.ROLLING_WINDOW, 
+                    window=FEATURES_CONFIG.ROLLING_WINDOW, 
                     min_periods=1
                 )
                 .std()
                 .fillna(0)
             )
 
-            df[f"{sensor}{_FEATURES_CONFIG.ROLLING_STD_SUFFIX}"] = rolling_std.values
+            df[f"{sensor}{FEATURES_CONFIG.ROLLING_STD_SUFFIX}"] = rolling_std.values
 
     # flag de ruido global, para filtrar facil si cualquier sensor tubo ruido
-    df[_FEATURES_CONFIG.GLOBAL_NOISE_COLUMN] = noise_global_mask
+    df[FEATURES_CONFIG.GLOBAL_NOISE_COLUMN] = noise_global_mask
 
     # dataframe solo ruido
     df_noise = df[noise_global_mask].copy().reset_index(drop=True)
@@ -1321,7 +1323,7 @@ def remove_redundant_sensor_noise_columns(
     Notes
     -----
     The names of generated columns depend on the suffix configuration
-    defined in ``_FEATURES_CONFIG``.
+    defined in ``FEATURES_CONFIG``.
 
     This function is intended to be used together with
     ``handle_sensor_noise``. It removes the auxiliary columns generated during
@@ -1334,7 +1336,7 @@ def remove_redundant_sensor_noise_columns(
 
     for sensor in tolerances:
 
-        clean_col = f"{sensor}{_FEATURES_CONFIG.CLEAN_SUFFIX}"
+        clean_col = f"{sensor}{FEATURES_CONFIG.CLEAN_SUFFIX}"
 
         if clean_col not in df.columns:
             continue
@@ -1346,10 +1348,10 @@ def remove_redundant_sensor_noise_columns(
 
         candidate_columns = [
             clean_col,
-            f"{sensor}{_FEATURES_CONFIG.IS_NOISE_SUFFIX}",
-            f"{sensor}{_FEATURES_CONFIG.DIFF_CLEAN_SUFFIX}",
-            f"{sensor}{_FEATURES_CONFIG.NOISE_MAGNITUDE_SUFFIX}",
-            f"{sensor}{_FEATURES_CONFIG.ROLLING_STD_SUFFIX}",
+            f"{sensor}{FEATURES_CONFIG.IS_NOISE_SUFFIX}",
+            f"{sensor}{FEATURES_CONFIG.DIFF_CLEAN_SUFFIX}",
+            f"{sensor}{FEATURES_CONFIG.NOISE_MAGNITUDE_SUFFIX}",
+            f"{sensor}{FEATURES_CONFIG.ROLLING_STD_SUFFIX}",
         ]
 
         existing_columns = [
@@ -1774,36 +1776,6 @@ def prepare_time_features(
 
 # region Others Functions ------------------------------------------------------
 
-
-
-
-
-#TODO para borrar cuano se comprube que ya no se usa porque se sustituye por remove_constant_columns
-# def drop_constant_columns(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
-#     """
-#     Removes columns containing a single unique non-null value.
-
-#     Missing values (NaN/None) are ignored when determining whether a column
-#     is constant.
-
-#     Args:
-#         df (pd.DataFrame): Input DataFrame.
-
-#     Returns:
-#         tuple[pd.DataFrame, pd.DataFrame]:
-#             - DataFrame with constant columns removed.
-#             - DataFrame containing the removed constant columns.
-#     """
-
-#     constant_columns = df.columns[df.nunique(dropna=True) == 1]
-
-#     df_removed = df[constant_columns].copy()
-
-#     df_out = df.drop(columns=constant_columns)
-
-#     return df_out, df_removed
-
-
 def validate_required_columns(
     df: pd.DataFrame, 
     required_cols: list[str] | str
@@ -1820,7 +1792,7 @@ def validate_required_columns(
     df : pd.DataFrame
         DataFrame to validate.
 
-    required_columns : list[str] | str
+    required_cols : list[str] | str
         Column name or list of column names that must exist in the DataFrame.
 
     Raises
@@ -1835,9 +1807,12 @@ def validate_required_columns(
 
     Examples
     --------
-    >>> required_columns = ["timestamp", "temperature", "humidity"]
-    >>> validate_required_columns(df, required_columns)
+    >>> required_cols = ["timestamp", "temperature", "humidity"]
+    >>> validate_required_columns(df, required_cols)
     """
+
+    if isinstance(required_cols, str):
+        required_cols = [required_cols]
 
     missing_columns = [
         column
@@ -1851,7 +1826,7 @@ def validate_required_columns(
 
 
 
-# endregion --------------------------------------------------------------------
+# endregion Others Functions ---------------------------------------------------
 
 
 
@@ -2111,7 +2086,7 @@ def prepare_dataframe_for_ml(
 
 
 
-# endregion --------------------------------------------------------------------
+# endregion ML Functions ---------------------------------------------------
 
 
 # region Aux Functions ---------------------------------------------------------
@@ -2439,4 +2414,9 @@ def get_columns_summary(
 #     return df_columns_summary.reset_index(drop=True)
         
 
-# endregion --------------------------------------------------------------------
+# endregion Aux Functions ------------------------------------------------------
+
+
+# region Functions with "lazy import" ------------------------------------------
+
+# endregion Functions with "lazy import" ---------------------------------------

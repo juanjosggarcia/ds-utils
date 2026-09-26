@@ -10,7 +10,7 @@ class DatasetContract(ABC):
     for input datasets.
     """
 
-    REQUIRED_COLUMNS: ClassVar[list[str]] = [...]
+    REQUIRED_COLUMNS: ClassVar[list[str]]
     """Columns required by the contract. Override in derived contracts."""
 
     def __post_init__(self):

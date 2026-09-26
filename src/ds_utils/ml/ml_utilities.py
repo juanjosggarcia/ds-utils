@@ -1,13 +1,44 @@
-from numpy.typing import ArrayLike
-import pandas as pd
 import numpy as np
+import pandas as pd
+from numpy.typing import ArrayLike
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 # import matplotlib.pyplot as plt
 # import seaborn as sns
 import re
 
 
-# region Models Functions ------------------------------------------------------
+# region AUX Class -------------------------------------------------------------
+
+# endregion AUX Class ----------------------------------------------------------
+
+# region CONSTANTS -------------------------------------------------------------
+
+# endregion CONSTANTS ----------------------------------------------------------
+
+# region Aux Functions ---------------------------------------------------------
+
+def bold(text: str) -> str:
+    return rf"$\bf{{{text}}}$"
+
+def normalize_model_name(model_name: str) -> str:
+    """
+    Convierte un nombre de modelo a un identificador en snake_case.
+
+    Ejemplos:
+        "Isolation Forest" -> "isolation_forest"
+        "Local Outlier Factor" -> "local_outlier_factor"
+        "One-Class SVM" -> "one_class_svm"
+        "Elliptic Envelope" -> "elliptic_envelope"
+    """
+    model_name = model_name.lower()
+    model_name = re.sub(r"[^a-z0-9]+", "_", model_name)
+    model_name = re.sub(r"_+", "_", model_name)
+    return model_name.strip("_")
+
+# region Aux Functions ---------------------------------------------------------
+
+
+# region Machine Learning Functions --------------------------------------------
 
 def format_max_features(max_features: str | float | int | None, n_features: int) -> str:
     """
@@ -474,25 +505,9 @@ def normalize_anomaly_scores_rank(
     return normalized
 
 
-# endregion --------------------------------------------------------------------
+# endregion Machine Learning Functions -----------------------------------------
 
 
-# region Aux Functions ---------------------------------------------------------
+# region Functions with "lazy import" ------------------------------------------
 
-def normalize_model_name(model_name: str) -> str:
-    """
-    Convierte un nombre de modelo a un identificador en snake_case.
-
-    Ejemplos:
-        "Isolation Forest" -> "isolation_forest"
-        "Local Outlier Factor" -> "local_outlier_factor"
-        "One-Class SVM" -> "one_class_svm"
-        "Elliptic Envelope" -> "elliptic_envelope"
-    """
-    model_name = model_name.lower()
-    model_name = re.sub(r"[^a-z0-9]+", "_", model_name)
-    model_name = re.sub(r"_+", "_", model_name)
-    return model_name.strip("_")
-
-
-# endregion --------------------------------------------------------------------
+# endregion Functions with "lazy import" ---------------------------------------

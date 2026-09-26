@@ -19,7 +19,7 @@ dependencies = [
 [project.optional-dependencies]
 eda = [
     "ipython>=8.0",
-    "matplotlib>=3.9",
+    "matplotlib>=3.9"
 ]
 
 ml = [
@@ -38,7 +38,3 @@ dev = [
     "mypy>=1.0",
 ]
 
-[tool.uv.workspace]
-members = [
-    "ds-utils",
-]
