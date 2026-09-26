@@ -1,39 +1,24 @@
-from ds_utils.eda.types import Alignment, Color
+from ds_utils.eda.preview_config import (
+    Alignment,
+    Color,
+    DEFAULT_COLOR,
+)
+from ds_utils.preprocessing.feature_config import (
+    FEATURES_CONFIG,
+    FeatureNamingConfig,
+)
 
 import numpy as np
 import pandas as pd
 from pandas.tseries.frequencies import to_offset
-from enum import Enum
+from pandas.tseries.offsets import Week, Day, Hour, Minute, Second
 from IPython.display import display, HTML
-from datetime import datetime
-# import matplotlib.pyplot as plt
 
 # region AUX Class -------------------------------------------------------------
-
-# class Alignment(Enum):
-#     LEFT = "left"
-#     CENTER = "center"
-#     RIGHT = "right"
-
-# class Color(Enum):
-#     BLACK = "#000000"
-#     WHITE = "#ffffff"
-#     ORANGE = "#e64a19"
-#     BLUE = "#1976d2"
-#     PURPLE = "#7b1fa2"
-#     YELLOW = "#fbc02d"
-#     GREEN = "#2e7d32"
-#     RED = "#d32f2f"
-#     GRAY = "#4e4e4e"
 
 # endregion AUX Class ----------------------------------------------------------
 
 # region CONSTANTS -------------------------------------------------------------
-
-DEFAULT_COLOR = Color.WHITE
-"""
-the default color, which is important for ensuring consistency with the editor's light and dark themes
-"""
 
 # endregion CONSTANTS ----------------------------------------------------------
 
@@ -41,58 +26,74 @@ the default color, which is important for ensuring consistency with the editor's
 
 def format_time_gap(freq: str, periods: int) -> str:
     """
-    Returns a human-readable representation of a temporal gap.
+    Format a time interval as a human-readable Spanish duration.
 
-    Args:
-        freq:
-            Pandas offset alias representing the sampling frequency
-            (e.g., ``"30s"``, ``"5min"``, ``"1h"``, ``"1D"``).
-        periods:
-            Number of consecutive sampling periods composing the gap.
+    The function converts a pandas frequency and a number of periods into
+    a duration expressed in weeks, days, hours, minutes, or seconds.
 
-    Returns:
-        Human-readable string representing the total gap duration
-        (e.g., ``"30 minutos"``, ``"2 horas"``, ``"1 día"``).
+    Parameters
+    ----------
+    freq : str
+        Pandas frequency string. Supported frequencies are weeks (``"W"``),
+        days (``"D"``), hours (``"h"``), minutes (``"min"``), and seconds
+        (``"s"``).
 
-    Raises:
-        ValueError:
-            If ``freq`` is not a valid pandas fixed-frequency offset alias
-            or represents a frequency greater than days (e.g., ``"2W"``, ``"1ME"``).
+    periods : int
+        Number of periods to include in the duration.
+
+    Returns
+    -------
+    str
+        Human-readable duration in Spanish, using the largest applicable
+        time unit.
+
+    Raises
+    ------
+    ValueError
+        If ``freq`` is invalid or represents an unsupported frequency.
+
+    Examples
+    --------
+    >>> format_time_gap("s", 10)
+    '10 segundos'
+    >>> format_time_gap("min", 5)
+    '5 minutos'
+    >>> format_time_gap("h", 2)
+    '2 horas'
+    >>> format_time_gap("D", 1)
+    '1 día'
+    >>> format_time_gap("W", 3)
+    '3 semanas'
     """
 
     # Validar freq
     try:
         offset = to_offset(freq)
+    except ValueError as exc:
+        raise ValueError(f"Invalid freq '{freq}'") from exc
 
-        if offset.name not in {"s", "min", "h", "D"}:
+
+    match offset:
+        case Week():
+            value = offset.n * periods
+            unit = "semana" if value == 1 else "semanas"
+        case Day():
+            value = offset.n * periods
+            unit = "día" if value == 1 else "días"
+        case Hour():
+            value = offset.n * periods
+            unit = "hora" if value == 1 else "horas"
+        case Minute():
+            value = offset.n * periods
+            unit = "minuto" if value == 1 else "minutos"
+        case Second():
+            value = offset.n * periods
+            unit = "segundo" if value == 1 else "segundos"
+        case _:
             raise ValueError(
-                "Only fixed frequencies up to one day are supported ('s', 'min', 'h', 'D')."
+                "Only seconds, minutes, hours, days, and weeks are supported."
             )
 
-        delta = pd.Timedelta(offset)
-
-    except ValueError:
-        raise ValueError(f"Invalid freq '{freq}'")
-
-    # total_seconds = int(offset.delta.total_seconds() * periods)
-    total_seconds = int(delta.total_seconds() * periods)
-
-    match total_seconds:
-        case s if s % 86400 == 0:
-            value = s // 86400
-            unit = "día" if value == 1 else "días"
-
-        case s if s % 3600 == 0:
-            value = s // 3600
-            unit = "hora" if value == 1 else "horas"
-
-        case s if s % 60 == 0:
-            value = s // 60
-            unit = "minuto" if value == 1 else "minutos"
-
-        case _:
-            value = total_seconds
-            unit = "segundo" if value == 1 else "segundos"
 
     return f"{value} {unit}"
 
@@ -100,31 +101,68 @@ def format_time_gap(freq: str, periods: int) -> str:
 
 # region Preview Functions -----------------------------------------------------
 
-
 def print_table_section(
-        title: str, 
-        content: pd.DataFrame | dict | list, 
-        show_table_headers=True,
-        show_table_index=True,
-        header_color=DEFAULT_COLOR, 
-        header_align=Alignment.LEFT, 
-        footer: None | str =None
-):
+    title: str, 
+    content: pd.DataFrame | dict | list, 
+    show_table_headers: bool = True,
+    show_table_index: bool = True,
+    header_color: Color = DEFAULT_COLOR, 
+    header_align: Alignment = Alignment.LEFT, 
+    footer: None | str = None
+) -> None:
     """
-    Displays a styled block with a DataFrame, dictionary or list of (lists or dict) as a table.
+    Display a formatted HTML table section.
 
-    Args:
-        title (str): Block title.
-        content (pd.DataFrame or dict or list of (lists or dict)): Dictionary (Key/Value) or DataFrame to display.
-        show_table_headers (bool): If False and content is dict, hides Key/Value column headers.
-        header_color (Color): Title color (Enum).
-        header_align (Alignment): Title alignment (Enum).
-        footer (None | str): Footer of the block
+    The function accepts a pandas DataFrame, a dictionary, or a list of
+    records and converts the input into an HTML table. Dictionaries with
+    list-like values are converted directly into a DataFrame, while other
+    dictionaries are displayed as key-value pairs.
+
+    Parameters
+    ----------
+    title : str
+        Section title displayed above the table.
+
+    content : pd.DataFrame, dict, or list
+        Tabular content to display.
+
+        - ``pd.DataFrame``: displayed directly as an HTML table.
+        - ``dict`` with list values: each key is treated as a column name.
+        - ``dict`` with scalar values: displayed as key-value pairs.
+        - ``list`` containing lists or dictionaries: converted to a
+          DataFrame.
+
+    show_table_headers : bool, default=True
+        Whether to display the table column headers.
+
+    show_table_index : bool, default=True
+        Whether to display the DataFrame index.
+
+    header_color : Color, default=Color.BLACK
+        Color used for the section header.
+
+    header_align : Alignment, default=Alignment.LEFT
+        Horizontal alignment of the section header.
+
+    footer : str, optional
+        Text displayed below the table.
+
+    Raises
+    ------
+    TypeError
+        If ``content`` is not a supported type or a list contains elements
+        that cannot be converted into a table.
+
+    Notes
+    -----
+    Empty content is displayed as a message instead of an empty HTML table.
+
+    The function displays the generated HTML directly and returns ``None``.
     """
 
+    # --- LOCAL VISUAL CONFIGURATION ---
     header_font_size = "18px"
     text_font_size = "14px"
-
     content_margin_top = "8px"
 
     # Generar tabla HTML según tipo de contenido
@@ -136,7 +174,12 @@ def print_table_section(
         table_html = content.to_html(index=show_table_index, header=show_table_headers)
     
     elif isinstance(content, dict):
-        if isinstance(next(iter(content.values())), list):
+        is_dict_of_lists = all(
+            isinstance(value, list)
+            for value in content.values()
+        )
+        
+        if is_dict_of_lists:
             # Para clave como cabecera y arrays del MISMO tamaño como valor, que seran las filas
             df = pd.DataFrame(content)
         else:
@@ -146,7 +189,11 @@ def print_table_section(
         table_html = df.to_html(index=False, header=show_table_headers)
 
     elif isinstance(content, list):
-        is_list_of_list = all(isinstance(x, (list, dict)) for x in content)
+        is_list_of_list = all(
+            isinstance(item, (list, dict))
+            for item in content
+        )
+
         if is_list_of_list:
             df = pd.DataFrame(content)
             table_html = df.to_html(index=False, header=show_table_headers)
@@ -156,7 +203,7 @@ def print_table_section(
     else:
         raise TypeError("Content must be a pandas DataFrame, dict or list of (lists or dict)")
 
-    # Bloque del título
+    # Bloque del titulo
     if title:
         html_title = f"""
             <h2 style='text-align:{header_align.value}; color:{header_color.value}; 
@@ -187,64 +234,68 @@ def print_table_section(
     display(HTML(html))
 
 
-# def print_table_section_old(title, data_dict, header_color=DEFAULT_COLOR, header_align=Alignment.LEFT):
-#     """
-#     Displays a styled block with a title and a dictionary as a 2-column table (Key / Value).
-
-#     Args:
-#         title (str): Block title.
-#         data_dict (dict): Dictionary to display as table.
-#         header_color (Color): Title color (Enum).
-#         header_align (Alignment): Title alignment (Enum).
-#         title_font_size (str): CSS font size of the title.
-#     """
-
-#     header_font_size = "18px"
-#     text_font_size = "14px"
-
-#     content_margin_top = "8px"
-
-#     # Convertir diccionario a DataFrame
-#     df = pd.DataFrame(list(data_dict.items()), columns=["Key", "Value"])
-#     table_html = df.to_html(index=False)
-
-#     # Construir el bloque
-#     html = f"""
-#     <div style="border:2px solid #444; padding:10px; margin:10px 0; border-radius:5px;">
-#         <h2 style='text-align:{header_align.value}; color:{header_color.value}; font-size:{header_font_size}; margin:0;'>{title}</h2>
-#         <hr style='border:1px solid {header_color.value}; margin:5px 10px 10px 0;'>
-#         {table_html}
-#     </div>
-#     """
-#     display(HTML(html))
-
-
-def print_list_section(title: str, items: list[str] | str, header_color=DEFAULT_COLOR, 
-                       header_align=Alignment.LEFT, enumerate=False, footer: None | str = None):
+def print_list_section(
+    title: str, 
+    items: list[str], 
+    header_color: Color = DEFAULT_COLOR,
+    header_align: Alignment = Alignment.LEFT,
+    numbered: bool = False,
+    footer: None | str = None
+) -> None:
     """
-    Displays a styled block with a heading and an enumerated list.
+    Display a formatted HTML list section.
 
-    Args:
-        title (str): Heading of the block.
-        items (list | str): List of points to enumerate.
-        header_color (str): CSS color of the title and separator line.
-        header_align (str): Alignment for the title ('left', 'center', 'right').
-        enumerate (bool): If True, uses numbered list; if False, uses bullets.
-        footer (None | str): Footer of the block
+    The function displays a list of items inside a styled HTML block.
+    Items can be rendered as either an ordered or unordered list.
+
+    Parameters
+    ----------
+    title : str
+        Section title displayed above the list.
+
+    items : list[str]
+        Items to display in the list.
+
+    header_color : Color, default=Color.BLACK
+        Color used for the section header and separator line.
+
+    header_align : Alignment, default=Alignment.LEFT
+        Horizontal alignment of the section header.
+
+    numbered : bool, default=False
+        Whether to display the items as a numbered list. If ``False``,
+        an unordered list with bullet points is displayed.
+
+    footer : str, optional
+        Text displayed below the list.
+
+    Notes
+    -----
+    The function displays the generated HTML directly and returns ``None``.
     """
 
+    # --- LOCAL VISUAL CONFIGURATION ---
     header_font_size = "18px"
     text_font_size = "14px"
-
     content_margin_top = "14px"
 
     # Convertir lista a HTML
-    if enumerate:
-        list_html = "".join(f"<li>{item}</li>" for item in items)
-        list_tag = f"<ol style='font-family:monospace; white-space:pre-wrap; margin:8 0 0 0; padding-left:30px; font-size:{text_font_size};'>{list_html}</ol>"
+    list_html = "".join(f"<li>{item}</li>" for item in items)
+
+    if numbered:
+        list_tag = (
+            f"<ol style='font-family:monospace; "
+            f"white-space:pre-wrap; margin:8px 0 0 0; "
+            f"padding-left:30px; font-size:{text_font_size};'>"
+            f"{list_html}</ol>"
+        )
     else:
-        list_html = "".join(f"<li>{item}</li>" for item in items)
-        list_tag = f"<ul style='font-family:monospace; white-space:pre-wrap; margin:{content_margin_top} 0 0 0; padding-left:30px; font-size:{text_font_size};'>{list_html}</ul>"
+        list_tag = (
+            f"<ul style='font-family:monospace; "
+            f"white-space:pre-wrap; margin:{content_margin_top} 0 0 0; "
+            f"padding-left:30px; font-size:{text_font_size};'>"
+            f"{list_html}</ul>"
+        )
 
     # Bloque del título
     if title:
@@ -274,16 +325,35 @@ def print_list_section(title: str, items: list[str] | str, header_color=DEFAULT_
     display(HTML(html))
 
 
-def print_simple_table_section(title: str, content: dict, header_color=DEFAULT_COLOR, header_align=Alignment.LEFT):
+def print_dict_section(
+    title: str, 
+    content: dict, 
+    header_color: Color = DEFAULT_COLOR,
+    header_align: Alignment = Alignment.LEFT,
+    footer: None | str = None
+) -> None:
     """
-    Displays a styled block with a dictionary as a simple table.
-    Converts all values to strings, including lists.
+    Display a dictionary as a formatted section.
 
-    Args:
-        title (str): Block title.
-        content (dict): Dict to be converted into a key-value table row for display.
-        header_color (Color): Title color (Enum).
-        header_align (Alignment): Title alignment (Enum).
+    The dictionary is displayed as two aligned columns, with keys on the
+    left and values on the right.
+
+    Parameters
+    ----------
+    title : str
+        Section title displayed above the content.
+
+    content : dict
+        Dictionary containing the key-value pairs to display.
+
+    header_color : Color, default=DEFAULT_COLOR
+        Color used for the section header and separator line.
+
+    header_align : Alignment, default=Alignment.LEFT
+        Horizontal alignment of the section header.
+
+    footer : str or None, default=None
+        Optional text displayed below the content.
     """
 
     if not isinstance(content, dict):
@@ -292,34 +362,59 @@ def print_simple_table_section(title: str, content: dict, header_color=DEFAULT_C
     # Convertimos todos los valores a string
     content_str = {k: str(v) if not isinstance(v, str) else v for k, v in content.items()}
 
-    # Creamos un DataFrame con una sola fila
-    df = pd.DataFrame([content_str])
-
-    fila = df.loc[0]  # o df.iloc[0]
+    content_text = pd.Series(content_str).to_string()
 
     print_section(
         title = title, 
-        content = fila.to_string(),
+        content = content_text,
         header_color = header_color,
-        header_align = header_align
+        header_align = header_align,
+        footer = footer
     )
 
 
-def print_section(title: str, content: str, header_color=DEFAULT_COLOR, header_align=Alignment.LEFT, footer: None | str = None):
+def print_section(
+    title: str, 
+    content: str, 
+    header_color: Color = DEFAULT_COLOR,
+    header_align: Alignment = Alignment.LEFT,
+    footer: None | str = None
+) -> None:
     """
-    Displays a styled diagnostic block with a heading and full-width separator line.
+    Display a formatted HTML section.
 
-    Args:
-        title (str): Heading of the diagnostic step.
-        content (str): Text or HTML content to display.
-        header_color (str): CSS color for the title.
-        header_align (str): Alignment for the title ('left', 'center', 'right').
-        footer (None | str): Footer of the block
+    The function displays a styled section containing a title, text content,
+    and an optional footer. The content is inserted directly into the
+    generated HTML.
+
+    Parameters
+    ----------
+    title : str
+        Section title displayed above the content.
+
+    content : str
+        Text or HTML content displayed inside the section.
+
+    header_color : Color, default=Color.BLACK
+        Color used for the section header and separator line.
+
+    header_align : Alignment, default=Alignment.LEFT
+        Horizontal alignment of the section header.
+
+    footer : str, optional
+        Text displayed below the content.
+
+    Notes
+    -----
+    The value of ``content`` is inserted directly into the generated HTML.
+    HTML markup contained in ``content`` is therefore rendered as HTML.
+
+    The function displays the generated HTML directly and returns ``None``.
     """
 
+    # --- LOCAL VISUAL CONFIGURATION ---
     header_font_size = "18px"
     text_font_size = "14px"
-
     content_margin_top = "14px"
 
     # Bloque del título
@@ -335,7 +430,8 @@ def print_section(title: str, content: str, header_color=DEFAULT_COLOR, header_a
     # Bloque del pie de pagina
     if footer:
         html_footer= f"""
-            <div style="font-family:monospace; white-space:pre-wrap; font-size:{text_font_size}; margin-top:{content_margin_top};">{footer}</div>
+            <div style="font-family:monospace; white-space:pre-wrap; 
+                    font-size:{text_font_size}; margin-top:{content_margin_top};">{footer}</div>
         """
     else:
         html_footer = ""
@@ -349,53 +445,68 @@ def print_section(title: str, content: str, header_color=DEFAULT_COLOR, header_a
     </div>
     """
 
-    # if title:
-    #     html = f"""
-    #     <div style="border:2px solid #444; padding:10px; margin:10px 0; border-radius:5px;">
-    #         <h3 style="text-align:{header_align.value}; font-size:{header_font_size}; margin:0; color:{header_color.value};">{title}</h3>
-    #         <hr style="border:1px solid {header_color.value}; margin:5px 0;">
-    #         <div style="font-family:monospace; white-space:pre-wrap; font-size:{text_font_size}; margin-top:{content_margin_top};">{content}</div>
-    #     </div>
-    #     """
-    # else:
-    #     html = f"""
-    #     <div style="border:2px solid #444; padding:10px; margin:10px 0; border-radius:5px;">
-    #         <div style="font-family:monospace; white-space:pre-wrap; font-size:{text_font_size}; margin-top:{content_margin_top};">{content}</div>
-    #     </div>
-    #     """
-
     display(HTML(html))
 
 
-def print_simple_section(title: str, content: str):
+def print_console_section(
+    title: str, 
+    content: str,
+    separator_length: int = 80
+) -> None:
     """
-    Prints a formatted diagnostic block with separators (Does not use HTML styles).
-    
-    Args:
-        title (str): The heading of the diagnostic step.
-        content (str): The data or results to be displayed.
+    Display a formatted section in the console using plain text.
+
+    The section consists of a title surrounded by separator lines,
+    followed by the provided content.
+
+    Parameters
+    ----------
+    title : str
+        Section title displayed in uppercase.
+
+    content : str
+        Text or results to display below the title.
+
+    separator_length : int, default=80
+        Number of characters used for the separator lines.
     """
 
-    separator = "=" * 80
+    separator = "=" * separator_length
     print(separator)
     print(str(title).upper())
     print(separator)
     print(content)
-    # print(separator + "\n")
 
 
-def preview_dataframe(title: str, df: pd.DataFrame, rows=5, header_color=DEFAULT_COLOR, header_align=Alignment.LEFT):
+def preview_dataframe(
+    title: str, 
+    df: pd.DataFrame, 
+    rows: int = 5,
+    header_color: Color = DEFAULT_COLOR,
+    header_align: Alignment = Alignment.LEFT,
+) -> None:
     """
-    Displays a styled preview of a DataFrame with a formatted title.
+    Display a styled preview of a DataFrame with a formatted title.
 
-    Args:
-        title (str): Title displayed above the table.
-        df (pd.DataFrame): Input dataframe.
-        rows (int): Number of rows to show (default 5).
-        header_color (Color): Title color (Enum).
-        header_align (Alignment): Title alignment (Enum).
+    Parameters
+    ----------
+    title : str
+        Title displayed above the DataFrame.
+
+    df : pd.DataFrame
+        DataFrame to preview.
+
+    rows : int, default=5
+        Number of rows to display.
+
+    header_color : Color, default=Color.BLACK
+        Color used for the title and bottom border.
+
+    header_align : Alignment, default=Alignment.LEFT
+        Horizontal alignment of the title.
     """
 
+    # --- LOCAL VISUAL CONFIGURATION ---
     header_font_size = "24px"
 
     caption_style = (
@@ -403,54 +514,9 @@ def preview_dataframe(title: str, df: pd.DataFrame, rows=5, header_color=DEFAULT
         f"border-bottom: 2px solid {header_color.value}; padding-bottom: 5px;'>"
         f"{title}</h2>"
     )
-    styled_df = df.head(rows).style.set_caption(caption_style)
+
+    styled_df = df.head(rows).style.set_caption(caption_style) # Necesario para generar/renderizar HTML en pandas
     display(styled_df)
-
-# def preview_dataframe(df, title, rows=5, header_color=DEFAULT_COLOR, header_align=Alignment.LEFT):
-#     """
-#     Displays a styled preview of a DataFrame inside a formatted block with a title.
-#     """
-
-#     # Convertimos solo las primeras 'rows' filas a HTML
-#     table_html = df.head(rows).to_html(index=False)
-
-#     # Creamos el bloque completo
-#     html = f"""
-#     <div style="border:2px solid #444; padding:10px; margin:10px 0; border-radius:5px;">
-#         <h2 style='text-align:{header_align.value}; color:{header_color.value}; 
-#                    margin:0; font-size:20px;'>{title}</h2>
-#         <hr style='border:1px solid {header_color.value}; margin:5px 10px 10px 0;'>
-#         {table_html}
-#     </div>
-#     """
-#     display(HTML(html))
-
-# def preview_dataframe_old(df, title, rows=5, header_color="black"):
-#     """
-#     Displays a styled preview of the dataframe with an HTML caption.
-#     Useful for clean documentation within notebooks.
-#     """
-
-#     COLOR_PALETTE = {
-#         "black": "#000000",     # Black
-#         "white": "#ffffff",     # White
-#         "orange": "#e64a19",    # Deep Orange
-#         "blue": "#1976d2",      # Blue
-#         "purple": "#7b1fa2",    # Purple
-#         "yellow": "#fbc02d",    # Amber/Yellow
-#         "green": "#2e7d32",     # Forest Green (Default)
-#         "red": "#d32f2f",       # Red
-#         "pink": "#CA5CC1",      # Pink
-#         "gray": "#4e4e4e"       # Gray       
-#     }
-
-#     header_color = COLOR_PALETTE.get(header_color, "black")
-
-#     ALIGNMENT = ["left", "center", "right"]
-
-#     # Using <h2> instead of <h1> for better integration with notebook UI
-#     caption_style = f"<h2 style='text-align:{ALIGNMENT[1]}; color:{header_color};'>{title}</h2>"
-#     display(df.head(rows).style.set_caption(caption_style))
 
 
 def show_df_details(
@@ -458,35 +524,52 @@ def show_df_details(
     col_time: str, 
     full_info: bool = False, 
     resume_info: bool = False, 
-    freq_missing: None|str = None, 
-    missing_gap_limit: None|int =None
+    freq_missing: None | str = None, 
+    missing_gap_limit: None | int =None
 ) -> None:
     """
-    Displays a summary of a DataFrame including missing values,
-    constant columns and optional descriptive information.
+    Display a summary of a DataFrame with optional detailed information.
 
-    Args:
-        df:
-            DataFrame to analyse.
-        col_time:
-            Name of the timestamp column.
-        full_info:
-            Whether to display unique values per column and detected gaps.
-        resume_info:
-            Whether to display ``describe()`` and ``info()``.
-        freq_missing:
-            Pandas offset alias for resampling frequency, (e.g., ``"30s"``, ``"5min"``, ``"1h"``, ``"1D"``, ``"1W"``).
-            used to detect missing timestamps.
-        missing_gap_limit:
-            Minimum number of consecutive missing periods required for a gap
-            to be reported.
+    The summary includes the number of invalid cells, invalid rows, and
+    constant columns. Optional timestamp analysis can report missing
+    periods and large gaps, while additional descriptive information can
+    be displayed when requested.
 
-    Raises:
-        ValueError:
-            If ``freq_missing`` is not a valid pandas offset alias.
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame to analyze.
+
+    col_time : str
+        Name of the timestamp column used for missing-period and gap analysis.
+
+    full_info : bool, default=False
+        Whether to display the column summary. If ``freq_missing`` and
+        ``missing_gap_limit`` are provided, large timestamp gaps are also
+        displayed.
+
+    resume_info : bool, default=False
+        Whether to display descriptive statistics and raw DataFrame
+        information.
+
+    freq_missing : str, optional
+        Pandas offset alias used to detect missing timestamps, such as
+        ``"30s"``, ``"5min"``, ``"1h"``, or ``"1D"``.
+
+    missing_gap_limit : int, optional
+        Minimum number of consecutive missing periods required for a gap
+        to be reported.
+
+    Raises
+    ------
+    ValueError
+        If ``freq_missing`` is not a valid pandas offset alias.
+
+    Notes
+    -----
+    The preprocessing utilities are imported lazily in this function.
     """
 
-    # from data_analysis.utils import features_utilities
     from ds_utils.preprocessing import features_utilities
 
     # Tipos no validos: None, NaN, NaT, "", " "
@@ -499,12 +582,6 @@ def show_df_details(
 
 
     # Se muestran el numero de filas totales y el numero de filas con valores invalidos en ellas
-#     content = f'''Dataframe analizado: celdas({df.size}), filas{df.shape}columnas
-# - Total de Celdas con valores no validos en ellas: {n_invalid_cells}
-# - Total de Filas con algun valor no valido en ellas: {n_invalid_rows}
-# - Total de Columnas con valores unicos en ellas: {n_constans_col}
-# '''
-
     content = f"""DataFrame analizado:
 - Celdas: {df.size}
 - Filas: {df.shape[0]}
@@ -512,18 +589,13 @@ def show_df_details(
 - Total de celdas con valores no válidos: {n_invalid_cells}
 - Total de filas con algún valor no válido: {n_invalid_rows}
 - Total de columnas con valores constantes: {n_constans_col}"""
-
-#     content = f"""DataFrame analizado: Celdas: {df.size}; Columnas: {df.shape[1]}; Filas: {df.shape[0]}
-#  - Total de celdas con valores no válidos: {n_invalid_cells}
-#  - Total de filas con algún valor no válido: {n_invalid_rows}
-#  - Total de columnas con valores constantes: {n_constans_col}"""
     
     if freq_missing:
         # Validar freq
         try:
-            offset = to_offset(freq_missing)
-        except ValueError:
-            raise ValueError(f"Invalid freq '{freq_missing}'")
+            to_offset(freq_missing)
+        except ValueError as exc:
+            raise ValueError(f"Invalid freq '{freq_missing}'") from exc
     
         n_missing, _ = features_utilities.count_missing_timestamps(df, col_time, freq=freq_missing, realign=False)
 
@@ -536,85 +608,6 @@ def show_df_details(
 
 
     if full_info:
-
-        # # Ver numero de valores distintos por columna
-        # df_nunique = (
-        #     df.nunique(dropna=True)
-        #     .sort_values()
-        #     .reset_index(name="num_valores_distintos") # reset_index ya fuerza que la salida sea un dataframe no necesito añadir .to_frame()
-        #     .rename(columns={"index": "nombre_columna"})
-        # )
-        # print_table_section(
-        #     f"Total valores distintos por columnas".upper(), 
-        #     df_nunique, 
-        # )
-
-        # Resumen de columnas
-
-        # invalid_values = (
-        #     df.isna().sum()
-        #     + (
-        #         df.select_dtypes(include="object")
-        #         .apply(lambda col: col.str.strip().eq("").sum())
-        #     )
-        # )
-
-        # invalid_values = features_utilities.count_missing_cells_by_column(df)
-
-        # df_columns_summary = pd.DataFrame({
-        #     "nombre_columna": df.columns,
-        #     "tipo_dato": df.dtypes.astype(str).values,
-        #     "num_valores_distintos": df.nunique(dropna=True).values,
-        #     "num_valores_no_validos": invalid_values,
-        # })
-
-        # df_columns_summary["porcentaje_no_validos"] = (
-        #     df_columns_summary["num_valores_no_validos"] / len(df) * 100
-        # ).round(2)
-
-        # df_columns_summary = (
-        #     df_columns_summary
-        #     .sort_values(
-        #         by=[
-        #             "num_valores_no_validos",
-        #             "num_valores_distintos",
-        #         ],
-        #         ascending=[
-        #             False,
-        #             True,
-        #         ],
-        #     )
-        #     .reset_index(drop=True)
-        # )
-
-
-        # invalid_values = features_utilities.count_missing_cells_by_column(df)
-
-        # df_columns_summary = pd.DataFrame(index=df.columns)
-
-        # df_columns_summary["tipo_dato"] = df.dtypes.astype(str)
-        # df_columns_summary["num_valores_distintos"] = df.nunique(dropna=True)
-        # df_columns_summary["num_valores_no_validos"] = invalid_values
-
-        # df_columns_summary["porcentaje_no_validos"] = (
-        #     df_columns_summary["num_valores_no_validos"] / len(df) * 100
-        # ).round(2)
-
-        # df_columns_summary = (
-        #     df_columns_summary
-        #     .reset_index(names="nombre_columna")
-        #     .sort_values(
-        #         by=[
-        #             "num_valores_no_validos",
-        #             "num_valores_distintos",
-        #         ],
-        #         ascending=[
-        #             False,
-        #             True,
-        #         ],
-        #     )
-        #     .reset_index(drop=True)
-        # )
 
         df_columns_summary = features_utilities.get_columns_summary(
             df,
@@ -648,13 +641,12 @@ def show_df_details(
 
     if resume_info:
 
-        # print_table_section("Descripción del dataframe".upper(), df.describe())
         print_table_section(
             "Descripción del dataframe".upper(), 
             df.describe(percentiles=[0.001, 0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99, 0.999])
         )
 
-        print_simple_section("Resumen Raw del dataframe".upper(), "")
+        print_console_section("Resumen Raw del dataframe".upper(), "")
         
         print(df.info())
 
@@ -665,17 +657,18 @@ def show_df_differences(
     df_modified: pd.DataFrame
 ) -> None:
     """
-    Displays a summary of the structural differences between two DataFrames.
+    Display a summary of the structural differences between two DataFrames.
 
-    The function compares the input DataFrames and reports their dimensions,
-    as well as the columns that have been added or removed.
+    The function compares the dimensions and column names of the input
+    DataFrames and reports the columns that were added or removed.
 
-    Args:
-        df_original:
-            Original DataFrame.
+    Parameters
+    ----------
+    df_original : pd.DataFrame
+        Original DataFrame.
 
-        df_modified:
-            Modified DataFrame.
+    df_modified : pd.DataFrame
+        Modified DataFrame.
     """
 
     added_columns = sorted(set(df_modified.columns) - set(df_original.columns))
@@ -695,80 +688,134 @@ Cambios entre original y modificado:
 - Columnas añadidas ({len(added_columns)}): {added_columns if added_columns else "Ninguna"}
 - Columnas eliminadas ({len(removed_columns)}): {removed_columns if removed_columns else "Ninguna"}
 """
-    
-#     content = f'''- Dataset original: celdas({df_before.size}), filas{df_before.shape}columnas
-# - Dataset Despues del procesamiento: celdas({df_after.size}), filas{df_after.shape}columnas
-# - Columnas Añadidas: {added_columns}
-# - Columnas Eliminadas: {removed_columns}
-# '''
 
     print_section("Diferencias entre dataframes".upper(), content)
-
 
 
 
 def show_noise_summary(
     df: pd.DataFrame,
     tolerances: dict[str, float],
-    noise_suffix: str = "_is_noise",
-    global_noise_column: str = "any_sensor_noise",
+    config: FeatureNamingConfig = FEATURES_CONFIG,
 ) -> None:
     """
     Display a summary of sensor statistics and detected noise.
 
     Parameters
     ----------
-    df : pandas.DataFrame
+    df : pd.DataFrame
         DataFrame containing the sensor data and noise flags.
+
     tolerances : dict[str, float]
         Mapping of sensor names to their corresponding noise thresholds.
-    noise_suffix : str, default="_is_noise"
-        Suffix used to identify each sensor's noise flag column.
-    global_noise_column : str, default="any_sensor_noise"
-        Name of the column indicating whether any sensor is marked as noise.
-    """
 
+    config : FeatureNamingConfig, default=FEATURES_CONFIG
+        Naming configuration used to identify generated noise columns.
+    """
     sections = []
-    num_added_sensor = 0
+    num_analyzed_sensors = 0
 
     for sensor, threshold in tolerances.items():
-        noise_col = f"{sensor}{noise_suffix}"
+        noise_col = f"{sensor}{config.IS_NOISE_SUFFIX}"
 
         if sensor not in df.columns or noise_col not in df.columns:
             continue
 
-        num_added_sensor += 1
+        num_analyzed_sensors += 1
 
         sections.append(
-            f'''- {sensor}
+            f"""- {sensor}
     Media: {df[sensor].mean():.2f}
     Mediana: {df[sensor].median():.2f}
     Mínimo: {df[sensor].min():.2f}
     Máximo: {df[sensor].max():.2f}
     Umbral: > {threshold}
     Picos detectados: {df[noise_col].sum()}
-'''
+"""
         )
 
     total_noise = (
-        df[global_noise_column].sum()
-        if global_noise_column in df.columns
+        df[config.GLOBAL_NOISE_COLUMN].sum()
+        if config.GLOBAL_NOISE_COLUMN in df.columns
         else "N/A"
     )
 
-    content = f'''SENSORES ANALIZADOS:
+    content = f"""SENSORES ANALIZADOS:
 {''.join(sections)}
 RESUMEN:
-Total de sensores analizados: {num_added_sensor}
+Total de sensores analizados: {num_analyzed_sensors}
 Total de registros analizados: {len(df)}
 Total de registros con ruido encontrados: {total_noise}
-'''
+"""
 
     print_section(
         "Resultados de ruido analizados".upper(),
         content,
     )
 
+
+# TODO deprecated
+# def show_noise_summary_old(
+#     df: pd.DataFrame,
+#     tolerances: dict[str, float],
+#     noise_suffix: str = "_is_noise",
+#     global_noise_column: str = "any_sensor_noise",
+# ) -> None:
+#     """
+#     Display a summary of sensor statistics and detected noise.
+
+#     Parameters
+#     ----------
+#     df : pandas.DataFrame
+#         DataFrame containing the sensor data and noise flags.
+#     tolerances : dict[str, float]
+#         Mapping of sensor names to their corresponding noise thresholds.
+#     noise_suffix : str, default="_is_noise"
+#         Suffix used to identify each sensor's noise flag column.
+#     global_noise_column : str, default="any_sensor_noise"
+#         Name of the column indicating whether any sensor is marked as noise.
+#     """
+
+#     sections = []
+#     num_added_sensor = 0
+
+#     for sensor, threshold in tolerances.items():
+#         noise_col = f"{sensor}{noise_suffix}"
+
+#         if sensor not in df.columns or noise_col not in df.columns:
+#             continue
+
+#         num_added_sensor += 1
+
+#         sections.append(
+#             f'''- {sensor}
+#     Media: {df[sensor].mean():.2f}
+#     Mediana: {df[sensor].median():.2f}
+#     Mínimo: {df[sensor].min():.2f}
+#     Máximo: {df[sensor].max():.2f}
+#     Umbral: > {threshold}
+#     Picos detectados: {df[noise_col].sum()}
+# '''
+#         )
+
+#     total_noise = (
+#         df[global_noise_column].sum()
+#         if global_noise_column in df.columns
+#         else "N/A"
+#     )
+
+#     content = f'''SENSORES ANALIZADOS:
+# {''.join(sections)}
+# RESUMEN:
+# Total de sensores analizados: {num_added_sensor}
+# Total de registros analizados: {len(df)}
+# Total de registros con ruido encontrados: {total_noise}
+# '''
+
+#     print_section(
+#         "Resultados de ruido analizados".upper(),
+#         content,
+#     )
 
 
 # endregion Preview Functions --------------------------------------------------

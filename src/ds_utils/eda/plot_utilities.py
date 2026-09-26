@@ -1,4 +1,7 @@
-from ds_utils.preprocessing.feature_config import FEATURES_CONFIG
+from ds_utils.preprocessing.feature_config import (
+    FEATURES_CONFIG,
+    FeatureNamingConfig,
+)
 
 import numpy as np
 import pandas as pd
@@ -77,6 +80,7 @@ def plot_sensor_signals(
     df: pd.DataFrame,
     col_time: str,
     tolerances: dict[str, float],
+    config: FeatureNamingConfig = FEATURES_CONFIG,
 ) -> None:
     """
     Plot raw and cleaned sensor signals, highlighting detected noise samples.
@@ -92,10 +96,9 @@ def plot_sensor_signals(
     tolerances : dict[str, float]
         Mapping of sensor names to their corresponding noise thresholds.
 
-    Notes
-    -----
-    The names of the cleaned-signal and noise-indicator columns are derived from
-    the suffixes defined in ``FEATURES_CONFIG``.
+    config : FeatureNamingConfig, default=FEATURES_CONFIG
+        Naming configuration used to identify the cleaned-signal and
+        noise-indicator columns.
     """
 
     if col_time not in df.columns:
@@ -120,7 +123,7 @@ def plot_sensor_signals(
         )
 
         # Clean signal
-        clean_col = f"{sensor}{FEATURES_CONFIG.CLEAN_SUFFIX}"
+        clean_col = f"{sensor}{config.CLEAN_SUFFIX}"
         if clean_col in df.columns:
             plt.plot(
                 df[col_time],
@@ -131,7 +134,7 @@ def plot_sensor_signals(
             )
 
         # Detected noise
-        noise_col = f"{sensor}{FEATURES_CONFIG.IS_NOISE_SUFFIX}"
+        noise_col = f"{sensor}{config.IS_NOISE_SUFFIX}"
         if noise_col in df.columns:
             noise_df = df[df[noise_col]]
             plt.scatter(
@@ -143,7 +146,8 @@ def plot_sensor_signals(
             )
 
         plt.title(
-            rf"Análisis de Ruido en '{sensor}' $\bf{{(Umbral: >\ {threshold})}}$"
+            rf"Análisis de Ruido en '{sensor}' "
+            rf"$\bf{{(Umbral: >\ {threshold})}}$"
         )
         plt.xlabel("Tiempo")
         plt.ylabel(sensor)
@@ -151,6 +155,88 @@ def plot_sensor_signals(
         plt.legend()
         plt.tight_layout()
         plt.show()
+
+
+
+# TODO deprecated
+# def plot_sensor_signals_old(
+#     df: pd.DataFrame,
+#     col_time: str,
+#     tolerances: dict[str, float],
+# ) -> None:
+#     """
+#     Plot raw and cleaned sensor signals, highlighting detected noise samples.
+
+#     Parameters
+#     ----------
+#     df : pd.DataFrame
+#         DataFrame containing the sensor data.
+
+#     col_time : str
+#         Name of the column containing the time values.
+
+#     tolerances : dict[str, float]
+#         Mapping of sensor names to their corresponding noise thresholds.
+
+#     Notes
+#     -----
+#     The names of the cleaned-signal and noise-indicator columns are derived from
+#     the suffixes defined in ``FEATURES_CONFIG``.
+#     """
+
+#     if col_time not in df.columns:
+#         raise ValueError(f"Column '{col_time}' not found in DataFrame.")
+
+#     for sensor, threshold in tolerances.items():
+
+#         if sensor not in df.columns:
+#             print(f"Sensor '{sensor}' not found. Skipping.")
+#             continue
+
+#         plt.figure(figsize=(15, 5))
+
+#         # Raw signal
+#         plt.plot(
+#             df[col_time],
+#             df[sensor],
+#             color="darkgray",
+#             alpha=0.9,
+#             linewidth=1.2,
+#             label="Raw",
+#         )
+
+#         # Clean signal
+#         clean_col = f"{sensor}{FEATURES_CONFIG.CLEAN_SUFFIX}"
+#         if clean_col in df.columns:
+#             plt.plot(
+#                 df[col_time],
+#                 df[clean_col],
+#                 color="green",
+#                 linewidth=2,
+#                 label="Limpio",
+#             )
+
+#         # Detected noise
+#         noise_col = f"{sensor}{FEATURES_CONFIG.IS_NOISE_SUFFIX}"
+#         if noise_col in df.columns:
+#             noise_df = df[df[noise_col]]
+#             plt.scatter(
+#                 noise_df[col_time],
+#                 noise_df[sensor],
+#                 color="red",
+#                 s=20,
+#                 label="Ruido Detectado",
+#             )
+
+#         plt.title(
+#             rf"Análisis de Ruido en '{sensor}' $\bf{{(Umbral: >\ {threshold})}}$"
+#         )
+#         plt.xlabel("Tiempo")
+#         plt.ylabel(sensor)
+#         plt.grid(True, alpha=0.3)
+#         plt.legend()
+#         plt.tight_layout()
+#         plt.show()
 
 
 def plot_model_anomaly_scores(
