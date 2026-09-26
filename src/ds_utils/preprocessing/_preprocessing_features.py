@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
-from typing import Collection, Literal
+from typing import Literal
+from pandas.tseries.frequencies import to_offset
+
+from ds_utils.preprocessing._preprocessing_others import convert_timestamp
 
 # region Aux Class -------------------------------------------------------------
 
@@ -102,8 +105,8 @@ def resample_time(
     # Validar frecuencia
     try:
         to_offset(freq)
-    except ValueError:
-        raise ValueError(f"Invalid freq '{freq}'")
+    except ValueError as exc:
+        raise ValueError(f"Invalid freq '{freq}'") from exc
 
     df = df.copy()
     df[col_time] = pd.to_datetime(df[col_time])

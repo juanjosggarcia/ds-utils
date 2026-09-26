@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from typing import Collection, Literal
+from pandas.tseries.frequencies import to_offset
 
 # region Aux Class -------------------------------------------------------------
 
@@ -110,8 +110,8 @@ def find_large_gaps(
     # Validar freq
     try:
         offset = to_offset(freq)
-    except ValueError:
-        raise ValueError(f"Invalid freq '{freq}'")
+    except ValueError as exc:
+        raise ValueError(f"Invalid freq '{freq}'") from exc
 
     # Timestamps reales
     ts_real = pd.to_datetime(df[col_time].drop_duplicates()).sort_values()

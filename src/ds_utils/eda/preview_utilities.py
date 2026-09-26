@@ -3,7 +3,7 @@ from ds_utils.eda.preview_config import (
     Color,
     DEFAULT_COLOR,
 )
-from ds_utils.preprocessing.feature_config import (
+from ds_utils.preprocessing.preprocessing_config import (
     FEATURES_CONFIG,
     FeatureNamingConfig,
 )
@@ -570,15 +570,19 @@ def show_df_details(
     The preprocessing utilities are imported lazily in this function.
     """
 
-    from ds_utils.preprocessing import features_utilities
+    from ds_utils.preprocessing.preprocessing_utilities import (
+        count_cells_with_missing, 
+        count_rows_with_missing,
+        count_constant_columns
+    )
 
     # Tipos no validos: None, NaN, NaT, "", " "
-    n_invalid_cells = features_utilities.count_cells_with_missing(df)
+    n_invalid_cells = count_cells_with_missing(df)
 
     # Tipos no validos: None, NaN, NaT, "", " "
-    n_invalid_rows = features_utilities.count_rows_with_missing(df)
+    n_invalid_rows = count_rows_with_missing(df)
 
-    n_constans_col = features_utilities.count_constant_columns(df)
+    n_constans_col = count_constant_columns(df)
 
 
     # Se muestran el numero de filas totales y el numero de filas con valores invalidos en ellas

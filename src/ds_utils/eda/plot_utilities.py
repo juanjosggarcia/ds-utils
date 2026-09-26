@@ -1,4 +1,4 @@
-from ds_utils.preprocessing.feature_config import (
+from ds_utils.preprocessing.preprocessing_config import (
     FEATURES_CONFIG,
     FeatureNamingConfig,
 )

@@ -1,6 +1,10 @@
+from ds_utils.preprocessing._preprocessing_others import validate_required_columns
+from ds_utils.preprocessing.preprocessing_config import FEATURES_CONFIG
+
 import numpy as np
 import pandas as pd
-from typing import Collection, Literal
+from typing import Literal
+from pandas.tseries.frequencies import to_offset
 
 # region Aux Class -------------------------------------------------------------
 
@@ -194,8 +198,8 @@ def handle_time_bursts(
     # Validar frecuencia
     try:
         to_offset(freq)
-    except ValueError:
-        raise ValueError(f"Invalid freq '{freq}'")
+    except ValueError as exc:
+        raise ValueError(f"Invalid freq '{freq}'") from exc
 
     df = df.copy()
     df[col_time] = pd.to_datetime(df[col_time])
