@@ -10,29 +10,9 @@ from pandas.tseries.frequencies import to_offset
 from enum import Enum
 from datetime import datetime
 
-# region AUX Class -------------------------------------------------------------
+# region Aux Class -------------------------------------------------------------
 
-# @dataclass(frozen=True)
-# class FeatureNamingConfig:
-#     """Naming convention used by the feature engineering utilities."""
-
-#     CLEAN_SUFFIX: str = "_clean"
-#     IS_NOISE_SUFFIX: str = "_is_noise"
-
-#     DIFF_SUFFIX: str = "_diff"
-#     DIFF_CLEAN_SUFFIX: str = "_diff_clean"
-
-#     NOISE_MAGNITUDE_SUFFIX: str = "_noise_magnitude"
-#     ROLLING_STD_SUFFIX: str = "_rolling_std"
-
-#     GLOBAL_NOISE_COLUMN: str = "any_sensor_noise"
-
-#     ROLLING_WINDOW: int = 5
-
-# # FeatureNamingConfig instance
-# _FEATURES_CONFIG = FeatureNamingConfig()
-
-# endregion AUX Class ----------------------------------------------------------
+# endregion Aux Class ----------------------------------------------------------
 
 # region Typing Class ----------------------------------------------------------
 
@@ -60,7 +40,14 @@ VALID_SUMMARY_COLUMNS = (
 
 # region CONSTANTS -------------------------------------------------------------
 
-# endregion  CONSTANTS ---------------------------------------------------------
+# endregion CONSTANTS ----------------------------------------------------------
+
+# region Aux Functions ---------------------------------------------------------
+
+# endregion Aux Functions ------------------------------------------------------
+
+
+
 
 
 # region Handlers Functions ----------------------------------------------------
@@ -525,30 +512,6 @@ def handle_missing_values(
             
 
     # # Siempre crear el DataFrame con el mismo esquema
-    # df_audit = pd.DataFrame(
-    #     audit_rows,
-    #     columns=[
-    #         "column",
-    #         "n_missing",
-    #         "dtype",
-    #         "fill_value",
-    #     ],
-    # )
-
-    # # Solo ordenar si hay filas
-    # if not df_audit.empty:
-    #     df_audit = (
-    #         df_audit
-    #         .sort_values("n_missing", ascending=False)
-    #         .reset_index(drop=True)
-    #     )
-
-    # df_audit = (
-    #     pd.DataFrame(audit_rows)
-    #     .sort_values("n_missing", ascending=False)
-    #     .reset_index(drop=True)
-    # )
-
     df_audit = (
         pd.DataFrame(
             audit_rows,
@@ -777,67 +740,9 @@ def find_column_pairs(
         sorted(replacement_columns),
     )
 
-
-# def find_column_pairs(
-#     df: pd.DataFrame,
-#     suffix: str,
-# ) -> tuple[list[str], list[str]]:
-#     """
-#     Finds original columns and their corresponding suffixed columns.
-
-#     Parameters
-#     ----------
-#     df : pd.DataFrame
-#         Input dataframe.
-#     suffix : str
-#         Suffix used to identify the derived columns.
-
-#     Returns
-#     -------
-#     tuple[list[str], list[str]]
-#         A tuple containing:
-#         - The original columns.
-#         - Their corresponding suffixed columns.
-
-#     Example
-#     -------
-#     cpu + cpu_clean;
-#     temp + temp_clean;
-
-#     Returns
-#     -------
-#     (
-#         ["cpu", "temp"],
-#         ["cpu_clean", "temp_clean"],
-#     )
-#     """
-
-#     columns = set(df.columns)
-
-#     original_columns = []
-#     suffixed_columns = []
-
-#     for column in columns:
-
-#         if not column.endswith(suffix):
-#             continue
-
-#         original_column = column[:-len(suffix)]
-
-#         if original_column in columns:
-#             original_columns.append(original_column)
-#             suffixed_columns.append(column)
-
-#     return (
-#         sorted(original_columns),
-#         sorted(suffixed_columns),
-#     )
-
-
 # endregion Finders Functions --------------------------------------------------
 
 # region Counters Functions ----------------------------------------------------
-
 
 def count_missing_timestamps(
     df: pd.DataFrame, 
@@ -912,7 +817,6 @@ def count_missing_timestamps(
     return len(missing_timestamps), missing_timestamps
 
 
-
 def count_edge_null_rows(
     df: pd.DataFrame, 
     mode: Literal["any", "all"] = "any"
@@ -956,8 +860,6 @@ def count_edge_null_rows(
     n_end = mask[::-1].cumprod().sum() # ::-1 recorre el vector en sentido contrario
  
     return int(n_start), int(n_end)
-
-
 
 
 def count_rows_by_time(
@@ -1092,33 +994,6 @@ def count_cells_with_missing(df: pd.DataFrame) -> int:
     return int(missing_values + missing_empty_strings)
 
 
-# def count_cells_with_missing(df: pd.DataFrame) -> int:
-#     """
-#     Counts the number of missing cells in a DataFrame.
-
-#     Missing values include:
-#     - None
-#     - NaN
-#     - Empty strings ("") in object columns
-
-#     Args:
-#         df (pd.DataFrame): Input DataFrame.
-
-#     Returns:
-#         int: Number of missing cells.
-#     """
-
-#     # Celdas con NaN o None
-#     missing_numeric = df.isnull().sum().sum()
-
-#     # Celdas con strings vacíos (solo columnas de tipo object)
-#     missing_empty_str = (
-#         df.select_dtypes(include="object") == ""
-#     ).sum().sum()
-
-#     return int(missing_numeric + missing_empty_str)
-
-
 def count_rows_with_missing(df: pd.DataFrame) -> int:
     """
     Count the number of rows containing missing values.
@@ -1157,36 +1032,6 @@ def count_rows_with_missing(df: pd.DataFrame) -> int:
     total_missing_rows = int((missing_values | missing_empty_strings).sum())
     
     return total_missing_rows
-
-
-
-# def count_rows_with_missing(df: pd.DataFrame) -> int:
-#     """
-#     Counts the number of rows in a DataFrame that contain at least one missing value.
-
-#     Missing values include: 
-#     - None
-#     - NaN
-#     - Empty strings ("") in object columns
-
-#     Args:
-#         df (pd.DataFrame): Input DataFrame.
-
-#     Returns:
-#         int: Number of rows containing at least one missing value.
-#     """
-#     # Filas con NaN o None
-#     missing_numeric = df.isnull().any(axis=1)
-    
-#     # Filas con strings vacíos (solo columnas de tipo object)
-#     missing_empty_str = (
-#         df.select_dtypes(include='object') == ""
-#     ).any(axis=1)
-    
-#     # Combina ambos
-#     total_missing_rows = (missing_numeric | missing_empty_str).sum()
-    
-#     return total_missing_rows
 
 
 def count_columns_with_missing(df: pd.DataFrame) -> int:
@@ -2034,58 +1879,6 @@ def prepare_dataframe_for_ml(
     return df
 
 
-# def sanitize_for_ml_old(df, fillna_cols=None, bool_as_int=False):
-#     """
-#     Convert columns to ML-safe types (float, int, bool, category) 
-#     and optionally fill NaNs in specific columns.
-
-#     Args:
-#         df (pd.DataFrame): DataFrame to process.
-#         fillna_cols (list[str] | None): Columns where NaNs should be filled with 0.
-#         bool_as_int (bool): Define the type to be used for Booleans: bool (Default) or int
-
-#     Returns:
-#         pd.DataFrame: Clean, ML-safe copy.
-#     """
-#     df = df.copy()
-
-#     bool_type = int if bool_as_int else bool
-    
-#     for col in df.columns:
-#         if pd.api.types.is_bool_dtype(df[col]):
-#             # bool → int (0/1)
-#             df[col] = df[col].astype(bool_type)
-#         elif pd.api.types.is_object_dtype(df[col]):
-#             if df[col].dropna().isin([True, False]).all():
-#                 df[col] = df[col].astype(bool_type)
-#             else:
-#                 # intentar convertir a float
-#                 df[col] = pd.to_numeric(df[col], errors="coerce")
-
-#             # intentar convertir a float
-#             # df[col] = pd.to_numeric(df[col], errors="coerce")
-#             if df[col].dtype == object:
-#                 # si no se pudo, a category
-#                 df[col] = df[col].astype("category")
-#         # si es categoría, dejarla como está
-#         # si es numérico (int/float) también dejarla
-    
-#     # Rellenar NaN en columnas específicas
-#     if fillna_cols:
-#         for col in fillna_cols:
-#             if col in df.columns:
-#                 df[col] = df[col].fillna(0)
-    
-#     return df
-
-
-
-
-
-
-
-
-
 # endregion ML Functions ---------------------------------------------------
 
 
@@ -2317,102 +2110,6 @@ def get_columns_summary(
     )
 
     return df_columns_summary
-
-
-# def get_columns_summary(
-#     df: pd.DataFrame,
-#     sort_by: (
-#         Sequence[str] |
-#         Literal[
-#             "nombre_columna",
-#             "tipo_dato",
-#             "num_valores_distintos",
-#             "num_valores_no_validos",
-#             "porcentaje_no_validos",
-#         ]
-        
-#     ) = "num_valores_no_validos",
-#     ascending: Sequence[bool] | bool  = True,
-# ) -> pd.DataFrame:
-#     """
-#     Generate a summary of the DataFrame columns.
-
-#     The summary includes the data type, the number of distinct values,
-#     the number of invalid values and the percentage of invalid values
-#     for each column.
-
-#     Parameters
-#     ----------
-#     df : pd.DataFrame
-#         Input DataFrame.
-
-#     sort_by : Sequence[str] | {"category", "label", "onehot", "drop"}, default="num_valores_no_validos"
-#         Summary column or columns used to sort the result.
-
-#     ascending : Sequence[bool] | bool, default=True
-#         Whether to sort each corresponding column in ascending order.
-
-#         If a sequence is provided, it must have the same length as
-#         ``sort_by``.
-
-#     Returns
-#     -------
-#     pd.DataFrame
-#         DataFrame containing one row per input column with the following
-#         fields:
-
-#         - ``nombre_columna``
-#         - ``tipo_dato``
-#         - ``num_valores_distintos``
-#         - ``num_valores_no_validos``
-#         - ``porcentaje_no_validos``
-#     """
-
-#     valid_sort_columns = {
-#         "nombre_columna",
-#         "tipo_dato",
-#         "num_valores_distintos",
-#         "num_valores_no_validos",
-#         "porcentaje_no_validos",
-#     }
-
-#     sort_columns = [sort_by] if isinstance(sort_by, str) else list(sort_by)
-
-#     invalid_columns = [
-#         column
-#         for column in sort_columns
-#         if column not in valid_sort_columns
-#     ]
-
-#     if invalid_columns:
-#         raise ValueError(
-#             f"Invalid sort_by value(s): {invalid_columns}. "
-#             f"Allowed values: {sorted(valid_sort_columns)}."
-#         )
-
-
-#     invalid_values = count_missing_cells_by_column(df)
-
-#     df_columns_summary = pd.DataFrame(index=df.columns)
-
-#     df_columns_summary["tipo_dato"] = df.dtypes.astype(str)
-#     df_columns_summary["num_valores_distintos"] = df.nunique(dropna=True)
-#     df_columns_summary["num_valores_no_validos"] = invalid_values
-
-#     df_columns_summary["porcentaje_no_validos"] = (
-#         df_columns_summary["num_valores_no_validos"] / len(df) * 100
-#     ).round(2)
-
-#     df_columns_summary = df_columns_summary.reset_index(names="nombre_columna")
-
-#     if sort_by is not None:
-#         df_columns_summary = df_columns_summary.sort_values(
-#             by=sort_by,
-#             ascending=ascending if ascending is not None else True,
-#         )
-
-#     return df_columns_summary.reset_index(drop=True)
-        
 
 # endregion Aux Functions ------------------------------------------------------
 

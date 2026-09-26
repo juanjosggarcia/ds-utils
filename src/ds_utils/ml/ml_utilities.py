@@ -7,9 +7,9 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 import re
 
 
-# region AUX Class -------------------------------------------------------------
+# region Aux Class -------------------------------------------------------------
 
-# endregion AUX Class ----------------------------------------------------------
+# endregion Aux Class ----------------------------------------------------------
 
 # region CONSTANTS -------------------------------------------------------------
 

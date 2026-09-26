@@ -14,9 +14,9 @@ from pandas.tseries.frequencies import to_offset
 from pandas.tseries.offsets import Week, Day, Hour, Minute, Second
 from IPython.display import display, HTML
 
-# region AUX Class -------------------------------------------------------------
+# region Aux Class -------------------------------------------------------------
 
-# endregion AUX Class ----------------------------------------------------------
+# endregion Aux Class ----------------------------------------------------------
 
 # region CONSTANTS -------------------------------------------------------------
 

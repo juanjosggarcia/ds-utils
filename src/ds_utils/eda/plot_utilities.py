@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
 
-# region AUX Class -------------------------------------------------------------
+# region Aux Class -------------------------------------------------------------
 
 class Transformer(Protocol):
     """Protocol for objects implementing a fit-transform operation."""
@@ -20,7 +20,7 @@ class Transformer(Protocol):
         """Fit the transformer and transform the input data."""
         ...
 
-# endregion AUX Class ----------------------------------------------------------
+# endregion Aux Class ----------------------------------------------------------
 
 # region CONSTANTS -------------------------------------------------------------
 
