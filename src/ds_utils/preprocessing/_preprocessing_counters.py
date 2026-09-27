@@ -13,6 +13,25 @@ from pandas.tseries.frequencies import to_offset
 
 # region Aux Functions ---------------------------------------------------------
 
+def _get_empty_string_mask(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Return a boolean mask identifying empty or whitespace-only strings.
+
+    Columns with ``object`` or ``string`` dtype are evaluated. Within those
+    columns, only values that are actually strings are checked.
+
+    Empty strings include values such as ``""``, ``" "``, or ``"   "``.
+
+    Returns
+    -------
+    pd.DataFrame
+        Boolean DataFrame where ``True`` indicates that the cell contains
+        an empty or whitespace-only string.
+    """
+    string_columns = df.select_dtypes(include=["object", "string"])
+
+    return string_columns.apply(lambda col: col.str.strip() == "")
+
 # endregion Aux Functions ------------------------------------------------------
 
 # region Counters Functions ----------------------------------------------------
@@ -26,9 +45,9 @@ def count_missing_timestamps(
     """
     Count missing timestamps within the observed time range.
 
-    This function compares the existing timestamps against the complete
-    expected sequence defined by ``freq`` and returns both the number of
-    missing timestamps and their values.
+    The function builds the expected timestamp sequence between the minimum
+    and maximum observed timestamps using ``freq`` and returns the timestamps
+    that are not present in the input data.
 
     Parameters
     ----------
@@ -39,13 +58,13 @@ def count_missing_timestamps(
         Name of the datetime column.
 
     freq : str
-        Expected sampling frequency (for example ``"30s"``, ``"5min"``,
-        ``"1h"``, ``"1D"``, ``"1W"``).
+        Expected sampling frequency, expressed as a pandas offset alias.
+        Examples include ``"30s"``, ``"5min"``, ``"1h"``, ``"1D"``, and ``"1W"``.
 
     realign : bool, default=False
-        Whether to round timestamps to the nearest frequency boundary
-        before searching for missing timestamps. If ``False``, the
-        original timestamp alignment is preserved.
+        If ``True``, round timestamps to the nearest frequency boundary before
+        checking for missing timestamps. Timestamps that become duplicates
+        after realignment are collapsed.
 
     Returns
     -------
@@ -64,6 +83,9 @@ def count_missing_timestamps(
 
     df = df.copy()
     df[col_time] = pd.to_datetime(df[col_time])
+
+    if df.empty:
+        return 0, pd.DatetimeIndex([])
 
     # Redondear timestamps al múltiplo de freq más cercano (opcional)
     if realign:
@@ -121,12 +143,10 @@ def count_edge_null_rows(
         Number of consecutive invalid rows at the end of the DataFrame.
     """
 
-    valid_mode = ["any", "all"]
+    valid_mode = ("any", "all")
     if mode not in valid_mode:
         raise ValueError(f"Invalid mode '{mode}'. Allowed values: {valid_mode}")
 
-    # mask = df.isna().all(axis=1) # mascara de True para todas de las columnas de la fila no validas
-    # mask = df.isna().any(axis=1) # mascara de True para al menos una de las columnas de la fila no validas
     mask = df.isna().all(axis=1) if mode == "all" else df.isna().any(axis=1)
 
     n_start = mask.cumprod().sum()
@@ -171,9 +191,7 @@ def count_rows_by_time(
             - n_rows:
                 Number of records within that period.
     """
-    # valid_freqs = ["D", "W", "M", "Y"]
-    # if freq not in valid_freqs:
-    #     raise ValueError(f"Invalid freq '{freq}'. Allowed values: {valid_freqs}")
+
     # Validar freq
     try:
         offset = to_offset(freq)
@@ -184,20 +202,19 @@ def count_rows_by_time(
     
     # Ensure datetime
     df[col_time] = pd.to_datetime(df[col_time])
+
+    try:
+        periods = df[col_time].dt.to_period(offset)
+    except (ValueError, TypeError) as exc:
+        raise ValueError(f"Invalid period frequency '{freq}'") from exc
     
     # Group by frequency
     grouped = (
         df
-        .groupby(df[col_time].dt.to_period(offset))
+        .groupby(periods)
         .size()
         .reset_index(name="n_rows")
     )
-    # grouped = (
-    #     df
-    #     .groupby(df[col_date].dt.floor(freq))
-    #     .size()
-    #     .reset_index(name="n_rows")
-    # )
     
     # Convert period to string for readability
     grouped[col_time] = grouped[col_time].astype(str)
@@ -229,15 +246,15 @@ def count_constant_columns(
         Number of columns with a single unique value.
     """
 
-    return (df.nunique(dropna=dropna) == 1).sum()
+    return int((df.nunique(dropna=dropna) == 1).sum())
 
 
 def count_cells_with_missing(df: pd.DataFrame) -> int:
     """
     Count the number of missing cells in a DataFrame.
 
-    Missing cells are detected using pandas missing-value rules and empty
-    string detection in object columns.
+    Missing cells are detected using pandas missing-value rules an empty or
+    whitespace-only string in an ``object`` or ``string`` column.
 
     Parameters
     ----------
@@ -252,18 +269,21 @@ def count_cells_with_missing(df: pd.DataFrame) -> int:
     Notes
     -----
     Missing values include:
-    - None
-    - NaN
-    - Empty strings or whitespace-only strings in object columns.
+    - ``None``
+    - ``NaN`` / ``np.nan``
+    - ``pd.NaT``
+    - ``pd.NA``
+    - Empty strings or whitespace-only strings in ``object`` or ``string`` 
+      columns.
     """
 
+    # Total de celdas en todo el Dataframe que pandas considera valores faltantes ("None", "NaN/np.nan", "pd.NaT", "pd.NA")
     missing_values = df.isna().sum().sum()
 
-    missing_empty_strings = (
-        df.select_dtypes(include="object")
-        .apply(lambda col: col.str.strip() == "")
-    ).sum().sum()
+    # Total de celdas con strings y objects vacíos o en blanco
+    missing_empty_strings = _get_empty_string_mask(df).sum().sum()
 
+    # Devolvemos el total de celdas
     return int(missing_values + missing_empty_strings)
 
 
@@ -271,9 +291,9 @@ def count_rows_with_missing(df: pd.DataFrame) -> int:
     """
     Count the number of rows containing missing values.
 
-    A row is considered missing when it contains at least one cell detected
-    as missing according to pandas rules or an empty string in an object
-    column.
+    A row is considered to contain missing values when at least one cell
+    contains a pandas-recognized missing value or an empty or
+    whitespace-only string in an ``object`` or ``string`` column.
 
     Parameters
     ----------
@@ -288,18 +308,19 @@ def count_rows_with_missing(df: pd.DataFrame) -> int:
     Notes
     -----
     Missing values include:
-    - None
-    - NaN
-    - Empty strings or whitespace-only strings in object columns.
+    - ``None``
+    - ``NaN`` / ``np.nan``
+    - ``pd.NaT``
+    - ``pd.NA``
+    - Empty strings or whitespace-only strings in ``object`` or ``string`` 
+      columns.
     """
-    # Filas con NaN o None
+
+    # Total de filas que pandas considera valores faltantes ("None", "NaN/np.nan", "pd.NaT", "pd.NA")
     missing_values = df.isna().any(axis=1)
 
-    # Filas con strings vacíos (solo columnas de tipo object y aplicando strip para que combierta cualquier cosa en blanco en un string vacio)
-    missing_empty_strings = (
-        df.select_dtypes(include="object")
-        .apply(lambda col: col.str.strip() == "")
-    ).any(axis=1)
+    # Total de filas con strings y objects vacíos o en blanco
+    missing_empty_strings = _get_empty_string_mask(df).any(axis=1)
 
     # Combina ambos
     total_missing_rows = int((missing_values | missing_empty_strings).sum())
@@ -312,8 +333,8 @@ def count_columns_with_missing(df: pd.DataFrame) -> int:
     Count the number of columns containing missing values.
 
     A column is considered to contain missing values when at least one cell
-    is detected as missing according to pandas rules or is an empty string
-    in an object column.
+    contains a pandas-recognized missing value or an empty or
+    whitespace-only string in an ``object`` or ``string`` column.
 
     Parameters
     ----------
@@ -328,23 +349,21 @@ def count_columns_with_missing(df: pd.DataFrame) -> int:
     Notes
     -----
     Missing values include:
-    - None
-    - NaN
-    - Empty strings or whitespace-only strings in object columns.
+    - ``None``
+    - ``NaN`` / ``np.nan``
+    - ``pd.NaT``
+    - ``pd.NA``
+    - Empty strings or whitespace-only strings in ``object`` or ``string``
+      columns.
     """
 
-    # Columns with pandas missing values
+    # Total de columnas que pandas considera valores faltantes ("None", "NaN/np.nan", "pd.NaT", "pd.NA")
     missing_values = df.isna().any(axis=0)
 
-    # Columns with empty or whitespace-only strings
-    missing_empty_strings = (
-        df.select_dtypes(include="object")
-        .apply(lambda col: col.str.strip() == "")
-    ).any(axis=0)
+    # Total de columnas con strings y objects vacíos o en blanco
+    missing_empty_strings = _get_empty_string_mask(df).any(axis=0)
 
-    total_missing_columns = int(
-        (missing_values | missing_empty_strings).sum()
-    )
+    total_missing_columns = int((missing_values | missing_empty_strings).sum())
 
     return total_missing_columns
 
@@ -354,7 +373,7 @@ def count_missing_cells_by_column(df: pd.DataFrame) -> pd.Series:
     Count missing cells for each DataFrame column.
 
     Missing values are detected using pandas missing-value rules and empty
-    string detection in object columns.
+    or whitespace-only strings in ``object`` or ``string`` columns.
 
     Parameters
     ----------
@@ -370,31 +389,21 @@ def count_missing_cells_by_column(df: pd.DataFrame) -> pd.Series:
     Notes
     -----
     Missing values include:
-    - None
-    - NaN
-    - Empty strings or whitespace-only strings in object columns.
+    - ``None``
+    - ``NaN`` / ``np.nan``
+    - ``pd.NaT``
+    - ``pd.NA``
+    - Empty strings or whitespace-only strings in ``object`` or ``string``
+      columns.
     """
 
-    # Missing values detected by pandas (NaN, None, NaT...)
+    # Total de celdas por columna que pandas considera valores faltantes ("None", "NaN/np.nan", "pd.NaT", "pd.NA")
     missing_values = df.isna().sum()
 
-    # Empty or whitespace-only strings in object columns
-    # missing_empty_strings = (
-    #     df.select_dtypes(include="object")
-    #     .apply(lambda column: column.str.strip().eq("").sum())
-    # )
-    obj_cols = df.select_dtypes(include="object")
+    # Total de celdas por columna con strings y objects vacíos o en blanco
+    missing_empty_strings = _get_empty_string_mask(df).sum()
 
-    # Se fuerza una Series cuando no hay columnas object, ya que pandas puede devolver
-    # un DataFrame vacío en ese caso y romper la suma posterior con missing_values.
-    if obj_cols.empty:
-        missing_empty_strings = pd.Series(0, index=df.columns)
-    else:
-        missing_empty_strings = obj_cols.apply(
-            lambda column: column.str.strip().eq("").sum()
-        )
-
-    # Align indexes and combine both counts
+    # Add para alinear por nombre de columna y poner cero donde no hay máscara de strings
     return missing_values.add(
         missing_empty_strings,
         fill_value=0,

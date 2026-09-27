@@ -23,9 +23,9 @@ def find_duplicates(
     """
     Detect duplicate timestamps.
 
-    This function identifies duplicated timestamps and returns both the
-    number of unique duplicated timestamps and all rows involved in those
-    duplicates.
+    The function identifies timestamps that appear more than once and returns
+    both the number of unique duplicated timestamps and all rows involved in
+    those duplicates, including their first occurrence.
 
     Parameters
     ----------
@@ -33,16 +33,27 @@ def find_duplicates(
         Input DataFrame.
 
     col_time : str
-        Name of the datetime column used to identify duplicates.
+        Name of the timestamp column used to identify duplicates. Values are
+        converted to pandas datetime before checking for duplicates.
 
     Returns
     -------
     n_duplicate_timestamps : int
-        Number of unique timestamps that appear more than once.
+        Number of distinct timestamps that appear more than once.
 
     df_duplicates : pd.DataFrame
         DataFrame containing every row whose timestamp is duplicated,
-        including the first occurrence.
+        including the first occurrence. The timestamp column is returned
+        as pandas datetime.
+
+    Notes
+    -----
+    Duplicate detection is based only on ``col_time``; differences in the
+    values of other columns do not affect whether rows are considered
+    duplicates.
+
+    Missing timestamps are handled according to pandas' duplicate detection
+    rules.
     """
 
     df = df.copy()
@@ -69,9 +80,10 @@ def find_large_gaps(
     """
     Detect gaps between consecutive timestamps that exceed a given limit.
 
-    A gap is reported when the time difference between two consecutive
-    timestamps is greater than the maximum fillable interval defined by
-    ``freq`` and ``limit``.
+    The function removes duplicate timestamps, sorts the remaining timestamps,
+    and calculates the time difference between each pair of consecutive
+    timestamps. A gap is reported when this difference is greater than the
+    maximum allowed interval defined by ``freq`` and ``limit``.
 
     Parameters
     ----------
@@ -79,32 +91,44 @@ def find_large_gaps(
         Input DataFrame.
 
     col_time : str
-        Name of the datetime column.
+        Name of the timestamp column. Values are converted to pandas datetime
+        before calculating the gaps.
 
     freq : str
-        Expected sampling frequency (for example ``"30s"``, ``"5min"``,
-        ``"1h"``, ``"1D"``, ``"1W"``).
+        Expected sampling frequency, expressed as a pandas frequency alias.
+        Examples include ``"30s"``, ``"5min"``, ``"1h"``, ``"1D"``, and
+        ``"1W"``.
 
     limit : int, default=1
-        Maximum number of consecutive periods considered fillable.
-        Gaps larger than this value are returned.
+        Maximum number of consecutive sampling periods allowed between two
+        timestamps. Gaps larger than ``limit * freq`` are returned.
 
     Returns
     -------
     pd.DataFrame
-        DataFrame describing each detected gap with the following columns:
+        DataFrame containing one row for each detected gap, with the following
+        columns:
 
         - ``start``:
-        Timestamp immediately before the gap.
+          Timestamp immediately before the gap.
 
         - ``end``:
-        Timestamp immediately after the gap.
+          Timestamp immediately after the gap.
 
         - ``missing_periods``:
-        Number of missing periods between ``start`` and ``end``.
+          Number of expected sampling periods missing between ``start`` and
+          ``end``.
 
         - ``duration``:
-        Total gap duration as ``timedelta``.
+          Total duration of the gap as a ``timedelta``.
+
+    Notes
+    -----
+    Duplicate timestamps are removed before calculating gaps.
+
+    For example, with ``freq="5min"`` and ``limit=1``, a gap between
+    ``10:00`` and ``10:10`` contains one missing period at ``10:05`` and
+    is reported because the total interval exceeds one expected period.
     """
 
     # Validar freq
@@ -138,7 +162,6 @@ def find_large_gaps(
     return gaps.reset_index(drop=True)
 
 
-
 def find_column_pairs(
     df: pd.DataFrame,
     prefix: str | None = None,
@@ -147,8 +170,9 @@ def find_column_pairs(
     """
     Find original columns and their corresponding replacement columns.
 
-    A replacement column is identified by either a prefix or a suffix
-    naming convention.
+    A replacement column is identified by either a prefix or a suffix naming
+    convention. Only columns for which the corresponding original column
+    exists in the DataFrame are returned.
 
     For example, with ``suffix="_clean"``, ``temperature`` is paired with
     ``temperature_clean``. With ``prefix="clean_"``, ``temperature`` is
@@ -159,27 +183,40 @@ def find_column_pairs(
     df : pd.DataFrame
         Input DataFrame.
 
-    prefix : str | None, default=None
-        Prefix used to identify replacement columns.
+    prefix : str or None, default=None
+        Prefix used to identify replacement columns. The original column name
+        is obtained by removing this prefix.
 
-    suffix : str | None, default=None
-        Suffix used to identify replacement columns.
+    suffix : str or None, default=None
+        Suffix used to identify replacement columns. The original column name
+        is obtained by removing this suffix.
 
         Exactly one of ``prefix`` or ``suffix`` must be provided.
 
     Returns
     -------
     original_columns : list[str]
-        Sorted list of original column names.
+        Sorted list of original column names for which a corresponding
+        replacement column was found.
 
     replacement_columns : list[str]
-        Sorted list of replacement column names.
+        Sorted list of replacement column names corresponding to the detected
+        original columns.
 
     Raises
     ------
     ValueError
         If neither ``prefix`` nor ``suffix`` is provided, or if both are
         provided at the same time.
+
+    Notes
+    -----
+    Columns without a corresponding original or replacement column are
+    ignored.
+
+    The prefix or suffix is removed only for the purpose of determining the
+    corresponding original column name; the original DataFrame is not
+    modified.
     """
 
     if prefix is None and suffix is None:

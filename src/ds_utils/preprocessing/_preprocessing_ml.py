@@ -45,11 +45,11 @@ def prepare_dataframe_for_ml(
     df : pd.DataFrame
         Input DataFrame.
 
-    fillna_cols : Collection[str] | None, default=None
+    fillna_cols : Collection[str] or None, default=None
         Names of numeric columns whose missing values should be replaced
         with ``0``.
 
-    excluded_cols : Collection[str] | None, default=None
+    excluded_cols : Collection[str] or None, default=None
         Columns excluded from every transformation. These columns are
         returned unchanged.
 

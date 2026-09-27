@@ -3,7 +3,7 @@ import pandas as pd
 from typing import Literal
 from pandas.tseries.frequencies import to_offset
 
-from ds_utils.preprocessing._preprocessing_others import convert_timestamp
+from ds_utils.preprocessing._preprocessing_others import convert_timestamps_vectorized, convert_timestamp
 
 # region Aux Class -------------------------------------------------------------
 
@@ -18,147 +18,6 @@ from ds_utils.preprocessing._preprocessing_others import convert_timestamp
 # endregion Aux Functions ------------------------------------------------------
 
 # region Features Functions ----------------------------------------------------
-
-def resample_time(
-    df: pd.DataFrame, 
-    col_time: str, 
-    freq: str, 
-    alignment: Literal["preserve", "round"] = "round",
-    fill_method: Literal["ffill", "bfill"] | None = None, 
-    fill_limit: int = 6
-) -> pd.DataFrame:
-    """
-    Resample a DataFrame to a fixed time frequency.
-
-    This function aligns timestamps to the requested frequency, inserts
-    missing timestamps and preserves the original observations without
-    applying any aggregation. Missing values introduced during resampling
-    can optionally be filled using forward or backward filling.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Input DataFrame.
-
-    col_time : str
-        Name of the datetime column.
-
-    freq : str
-        Target sampling frequency (for example ``"30s"``, ``"5min"``,
-        ``"1h"``, ``"1D"``, ``"1W"``).
-
-    alignment : {"preserve", "round"}, default="round"
-        Strategy used to align timestamps before resampling.
-
-        - ``"preserve"``
-        Preserve the original sampling offset. This assumes the timestamps
-        are already regularly spaced and only their origin does not match
-        the requested frequency. The first timestamp is used as the
-        resampling origin, so the original timestamps are preserved.
-
-        Example::
-
-            Original: 10:01, 10:06, 10:11
-            Result:   10:01, 10:06, 10:11
-
-        - ``"round"``
-        Round each timestamp to the nearest multiple of ``freq`` before
-        resampling. The original timestamp values are replaced by their
-        rounded values. This option is intended for datasets with small
-        timestamp deviations (jitter).
-
-        Example::
-
-            Original: 10:01, 10:06, 10:17
-            Rounded:  10:00, 10:05, 10:15
-            Result:   10:00, 10:05, 10:10, 10:15
-
-    fill_method : {"ffill", "bfill"} or None, default=None
-        Method used to fill missing values introduced during resampling.
-
-        - ``"ffill"``: propagate the previous valid observation.
-        - ``"bfill"``: propagate the next valid observation.
-        - ``None``: keep missing values.
-
-    fill_limit : int, default=6
-        Maximum number of consecutive missing periods to fill.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame resampled to the requested frequency.
-
-    Notes
-    -----
-    ``"preserve"`` should only be used when the timestamps are already
-    sampled at a constant frequency. If the timestamps are irregular,
-    observations may not match the generated time grid and can be discarded
-    during resampling.
-    """
-    
-    if alignment not in ("preserve", "round"):
-        raise ValueError("alignment must be 'preserve' or 'round'")
-
-    if fill_method not in ("ffill", "bfill", None):
-        raise ValueError("fill_method must be 'ffill', 'bfill' or None")
-
-    # Validar frecuencia
-    try:
-        to_offset(freq)
-    except ValueError as exc:
-        raise ValueError(f"Invalid freq '{freq}'") from exc
-
-    df = df.copy()
-    df[col_time] = pd.to_datetime(df[col_time])
-
-    # Mostrar si hay duplicados para no falsear resample
-    if df[col_time].duplicated().any():
-        raise ValueError(f"'{col_time}' column contains duplicate timestamps")
-
-    # Alinear según parámetro
-    if alignment == "round":
-        df[col_time] = df[col_time].dt.round(freq)
-        # Resolver colisiones si varios timestamps caen en el mismo bucket se conserva el primero
-        df = df.groupby(col_time).first().reset_index()
-    elif alignment == "preserve":
-        # en este caso no tocamos los timestamps
-        df = df.sort_values(col_time).set_index(col_time)
-
-
-    # Resample usando asfreq para mantener valores originales sin agregación
-    if alignment == "round":
-        df_resampled = df.set_index(col_time).resample(freq).asfreq()
-    elif alignment == "preserve":
-        df_resampled = df.resample(freq, origin="start").asfreq()
-
-    # # Seleccionar agregación por tipo, No se conserva el valor original
-    # agg_dict = {}
-    # for c in df.columns:
-    #     if c == col_date:
-    #         continue
-    #     if pd.api.types.is_bool_dtype(df[c]):
-    #         agg_dict[c] = 'max'
-    #     elif pd.api.types.is_numeric_dtype(df[c]):
-    #         agg_dict[c] = 'mean'
-    #     else:
-    #         # columnas no numéricas se dejan como primer valor
-    #         agg_dict[c] = 'first'
-
-    # # Resample con agregación
-    # if alignment == "round":
-    #     df_resampled = df.set_index(col_date).resample(freq).agg(agg_dict)
-    # elif alignment == "start":
-    #     df_resampled = df.resample(freq, origin="start").agg(agg_dict)
-
-
-    # Rellenar si se solicita
-    if fill_method is not None:
-        df_resampled = getattr(df_resampled, fill_method)(limit=fill_limit)
-
-    df_resampled = df_resampled.reset_index()
-    return df_resampled
-
-
 
 def prepare_time_features(
     df: pd.DataFrame, 
@@ -223,12 +82,7 @@ def prepare_time_features(
     df = df.copy()
     
     # 1. Base conversion (Mandatory)
-    # Time ISO 8601
-    # df[time_col] = pd.to_datetime(df[time_col])
-    # # Time Epoch
-    # df[time_col] = pd.to_datetime(df[time_col], unit='s', errors='coerce')
-    # 1. Convertir la columna de tiempo en objeto 'datetime'
-    df[col_time] = df[col_time].apply(convert_timestamp)
+    df[col_time] = convert_timestamps_vectorized(df[col_time], utc=True)
 
     # 1a. Comprobar que todos los valores convertidos son datetime
     if not pd.api.types.is_datetime64_any_dtype(df[col_time]):
@@ -285,6 +139,141 @@ def prepare_time_features(
         
     return df
 
+
+def resample_time(
+    df: pd.DataFrame, 
+    col_time: str, 
+    freq: str, 
+    alignment: Literal["preserve", "round"] = "round",
+    fill_method: Literal["ffill", "bfill"] | None = None, 
+    fill_limit: int = 6
+) -> pd.DataFrame:
+    """
+    Resample a DataFrame to a fixed time frequency.
+
+    The function inserts missing timestamps according to the requested
+    frequency without applying any aggregation to the original observations.
+    Missing values introduced by resampling can optionally be filled using
+    forward or backward filling.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame.
+
+    col_time : str
+        Name of the datetime column.
+
+    freq : str
+        Target sampling frequency, expressed as a pandas frequency alias.
+        Examples include ``"30s"``, ``"5min"``, ``"1h"``, ``"1D"``, and
+        ``"1W"``.
+
+    alignment : {"preserve", "round"}, default="round"
+        Strategy used to align timestamps before resampling.
+
+        - ``"preserve"``
+          Preserve the original timestamp offset. The first timestamp is
+          used as the origin of the resampling grid, so regularly spaced
+          timestamps keep their original offset.
+
+          Example::
+
+              Original: 10:01, 10:06, 10:11
+              Result:   10:01, 10:06, 10:11
+
+          This mode assumes that the input timestamps are already regularly
+          spaced. If they are irregular, observations that do not match the
+          generated time grid may be omitted during resampling.
+
+        - ``"round"``
+          Round each timestamp to the nearest multiple of ``freq`` before
+          resampling. This replaces the original timestamp values with their
+          rounded values. If multiple timestamps become equal after rounding,
+          the first non-null value for each column is retained.
+
+          This mode is intended for datasets with small timestamp deviations
+          (jitter).
+
+          Example::
+
+              Original:  10:01, 10:06, 10:17
+              Rounded:   10:00, 10:05, 10:15
+              Resampled: 10:00, 10:05, 10:10, 10:15
+
+          The ``10:10`` timestamp is introduced by the resampling step; it
+          is not created by the rounding operation.
+
+    fill_method : {"ffill", "bfill"} or None, default=None
+        Method used to fill missing values introduced during resampling.
+
+        - ``"ffill"``: propagate the previous valid observation.
+        - ``"bfill"``: propagate the next valid observation.
+        - ``None``: keep missing values.
+
+    fill_limit : int, default=6
+        Maximum number of consecutive missing periods to fill.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame resampled to the requested frequency.
+
+    Raises
+    ------
+    ValueError
+        If ``alignment`` or ``fill_method`` is invalid, if ``freq`` is not
+        a valid pandas frequency, or if the input contains duplicate
+        timestamps before alignment.
+
+    Notes
+    -----
+    When ``alignment="round"``, timestamps that collide after rounding are
+    grouped together and resolved using ``DataFrameGroupBy.first()``.
+    """
+    
+    if alignment not in ("preserve", "round"):
+        raise ValueError("alignment must be 'preserve' or 'round'")
+
+    if fill_method not in ("ffill", "bfill", None):
+        raise ValueError("fill_method must be 'ffill', 'bfill' or None")
+
+    # Validar frecuencia
+    try:
+        to_offset(freq)
+    except ValueError as exc:
+        raise ValueError(f"Invalid freq '{freq}'") from exc
+
+    df = df.copy()
+    df[col_time] = pd.to_datetime(df[col_time])
+
+    # Mostrar si hay duplicados para no falsear resample
+    if df[col_time].duplicated().any():
+        raise ValueError(f"'{col_time}' column contains duplicate timestamps")
+
+    # Alinear según parámetro
+    if alignment == "round":
+        df[col_time] = df[col_time].dt.round(freq)
+        # Resolver colisiones si varios timestamps caen en el mismo bucket se conserva el primero
+        df = df.groupby(col_time).first().reset_index()
+    elif alignment == "preserve":
+        # en este caso no tocamos los timestamps
+        df = df.sort_values(col_time).set_index(col_time)
+
+
+    # Resample usando asfreq para mantener valores originales sin agregación
+    if alignment == "round":
+        df_resampled = df.set_index(col_time).resample(freq).asfreq()
+    elif alignment == "preserve":
+        df_resampled = df.resample(freq, origin="start").asfreq()
+
+
+    # Rellenar si se solicita
+    if fill_method is not None:
+        df_resampled = getattr(df_resampled, fill_method)(limit = fill_limit)
+
+    df_resampled = df_resampled.reset_index()
+    return df_resampled
 
 # endregion Features Functions -------------------------------------------------
 

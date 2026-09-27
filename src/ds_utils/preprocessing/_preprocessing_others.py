@@ -36,7 +36,7 @@ def validate_required_columns(
     df : pd.DataFrame
         DataFrame to validate.
 
-    required_cols : list[str] | str
+    required_cols : list[str] or str
         Column name or list of column names that must exist in the DataFrame.
 
     Raises
@@ -79,24 +79,28 @@ def set_index_safe(
     If the column is already an index level, the DataFrame is returned
     unchanged. Otherwise, the column is set as the index.
 
-    Args:
-        df (pd.DataFrame):
-            Input DataFrame.
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame.
 
-        column (str):
-            Column to set as the index.
+    column : str
+        Column to set as the index.
 
-        drop (bool, default=True):
-            Whether to remove the column after setting it as the index.
-            Passed directly to ``DataFrame.set_index``.
+    drop : bool, default=True
+        Whether to remove the column after setting it as the index.
+        Passed directly to ``DataFrame.set_index``.
 
-    Returns:
-        pd.DataFrame:
-            DataFrame with the requested index.
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with the requested index.
 
-    Raises:
-        KeyError:
-            If the specified column does not exist.
+    Raises
+    ------
+    KeyError
+        If ``column`` does not exist in the DataFrame and is not already
+        an index level.
     """
 
     if column in df.index.names:
@@ -113,21 +117,23 @@ def reset_index_safe(
     Safely reset the DataFrame index.
 
     If the DataFrame already has the default RangeIndex, the index is dropped
-    to avoid creating an unnecessary "index" column. Otherwise, the current
+    to avoid creating an unnecessary ``"index"`` column. Otherwise, the current
     index is restored as one or more columns.
 
-    Args:
-        df (pd.DataFrame):
-            Input DataFrame.
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame.
 
-        drop (bool, default=False):
-            Whether to discard the current index instead of restoring it as
-            column(s). Passed directly to ``DataFrame.reset_index`` when the
-            DataFrame does not have a default ``RangeIndex``.
+    drop : bool, default=False
+        Whether to discard the current index instead of restoring it as
+        column(s). Passed directly to ``DataFrame.reset_index`` when the
+        DataFrame does not have a default ``RangeIndex``.
 
-    Returns:
-        pd.DataFrame:
-            DataFrame with its index safely reset.
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with its index safely reset.
     """
 
     if isinstance(df.index, pd.RangeIndex):
@@ -135,15 +141,22 @@ def reset_index_safe(
 
     return df.reset_index(drop=drop)
 
-def detect_timestamp(ts):
+
+def detect_timestamp(ts: str | int) -> str:
     """
-    Detects the type of a timestamp and converts it to a readable datetime.
-    
-    Parameters:
-    ts (str or int): The timestamp to detect. Can be epoch (seconds/milliseconds) or ISO 8601 string.
-    
-    Returns:
-    str: Description of the timestamp type and the corresponding UTC datetime.
+    Detect the type of a timestamp and convert it to a readable datetime.
+
+    Parameters
+    ----------
+    ts : str or int
+        Timestamp to detect. It can be a Unix epoch timestamp in seconds or
+        milliseconds, or an ISO 8601 datetime string.
+
+    Returns
+    -------
+    str
+        Description of the detected timestamp format and its corresponding
+        datetime representation in UTC.
     """
     try:
         # Try converting to integer (epoch)
@@ -162,20 +175,30 @@ def detect_timestamp(ts):
             return f"ISO 8601 format: {dt} (timezone included if present)"
         except ValueError:
             return "Unknown timestamp format"
-        
-def convert_timestamp(ts):
+
+
+def convert_timestamp(ts: str | int) -> pd.Timestamp | pd.NaT:
     """
-    Detect timestamp type and convert to datetime.
-    Supports seconds, milliseconds, microseconds, nanoseconds, and ISO 8601.
-    Returns pd.NaT if unknown format.
+    Detect the timestamp type and convert it to a datetime.
+
+    Supports Unix epoch timestamps in seconds, milliseconds, microseconds,
+    and nanoseconds, as well as ISO 8601 datetime strings.
+
+    Parameters
+    ----------
+    ts : str or int
+        Timestamp to convert. It can be a Unix epoch timestamp or an ISO 8601
+        datetime string.
+
+    Returns
+    -------
+    pd.Timestamp or pd.NaT
+        Converted timestamp as a pandas ``Timestamp``. Returns ``pd.NaT`` if
+        the timestamp format is invalid or cannot be converted.
     """
     try:
         n = int(ts)
-        # Heuristic: if > 10^12, treat as milliseconds
-        # if n > 1e12:
-        #     return pd.to_datetime(n, unit='ms', errors='coerce')
-        # else:
-        #     return pd.to_datetime(n, unit='s', errors='coerce')
+
         match n:
             case _ if n > 1e17:  # nanoseconds
                 return pd.to_datetime(n, unit='ns', errors='coerce')
@@ -192,6 +215,105 @@ def convert_timestamp(ts):
         except Exception:
             return pd.NaT
 
+
+def convert_timestamps_vectorized(
+    values: pd.Series, utc: bool = True
+) -> pd.Series:
+    """
+    Convert a Series containing numeric or string timestamps to datetime.
+
+    Numeric timestamps are interpreted as Unix epoch values. The time unit
+    is inferred independently for each value according to its magnitude,
+    allowing seconds, milliseconds, microseconds, and nanoseconds to coexist
+    in the same Series.
+
+    Non-numeric values are parsed as datetime strings, including ISO 8601
+    representations. Null or invalid values are converted to ``NaT``.
+
+    Parameters
+    ----------
+    values : pd.Series
+        Series containing timestamp values. Values may be numeric Unix epoch
+        timestamps in seconds, milliseconds, microseconds, or nanoseconds,
+        or datetime strings such as ISO 8601 values.
+
+    utc : bool, default=True
+        Whether to return timezone-aware datetimes in UTC. If ``True``, the
+        returned Series has a ``datetime64[ns, UTC]`` dtype. If ``False``,
+        the returned Series has a ``datetime64[ns]`` dtype.
+
+    Returns
+    -------
+    pd.Series
+        Series containing the converted timestamps. Invalid or missing
+        values are represented as ``NaT``.
+
+    Notes
+    -----
+    Numeric timestamps are classified independently using their magnitude:
+
+    - Values greater than ``1e17`` are interpreted as nanoseconds.
+    - Values greater than ``1e14`` and up to ``1e17`` are interpreted as
+      microseconds.
+    - Values greater than ``1e11`` and up to ``1e14`` are interpreted as
+      milliseconds.
+    - Values up to ``1e11`` are interpreted as seconds.
+
+    A value of ``0`` is treated as a valid Unix epoch timestamp and therefore
+    corresponds to ``1970-01-01 00:00:00``.
+
+    Conversion is vectorized by timestamp unit and does not process values
+    individually with ``Series.apply()``, which makes it suitable for large
+    DataFrames.
+    """
+    if values.empty:
+        dtype = "datetime64[ns, UTC]" if utc else "datetime64[ns]"
+        return pd.Series(dtype=dtype, index=values.index)
+
+    # 1. Intentar conversión numérica
+    numeric = pd.to_numeric(values, errors="coerce")
+    is_numeric = numeric.notna()
+
+    # 2. Inicializar la serie de salida con NaT
+    dtype = "datetime64[ns, UTC]" if utc else "datetime64[ns]"
+    result = pd.Series(pd.NaT, index=values.index, dtype=dtype)
+
+    # 3. Procesar valores numéricos (Epoch)
+    if is_numeric.any():
+        num_vals = numeric[is_numeric]
+
+        # Umbrales estándar entre 1973 y 5138 d.C.
+        masks = {
+            "ns": num_vals > 1e17,
+            "us": (num_vals > 1e14) & (num_vals <= 1e17),
+            "ms": (num_vals > 1e11) & (num_vals <= 1e14),
+            "s": num_vals <= 1e11,
+        }
+
+        for unit, mask in masks.items():
+            if mask.any():
+                target_idx = mask[mask].index
+                parsed_epoch = pd.to_datetime(
+                    num_vals.loc[target_idx],
+                    unit=unit,
+                    utc=utc,
+                    errors="coerce",
+                )
+                result.loc[target_idx] = parsed_epoch
+
+    # 4. Procesar valores no numéricos (ISO 8601 u otros formatos string)
+    is_non_numeric = ~is_numeric
+    if is_non_numeric.any():
+        # Descartar nulos originales para no gastar tiempo parseando None/NaN
+        raw_non_numeric = values[is_non_numeric].dropna()
+
+        if not raw_non_numeric.empty:
+            parsed_iso = pd.to_datetime(
+                raw_non_numeric, utc=utc, errors="coerce"
+            )
+            result.loc[parsed_iso.index] = parsed_iso
+
+    return result
 
 
 def get_columns_summary(
@@ -220,12 +342,13 @@ def get_columns_summary(
     df : pd.DataFrame
         Input DataFrame.
 
-    sort_by : Sequence[str] | {"nombre_columna", "tipo_dato", "num_valores_distintos", "num_valores_no_validos", "porcentaje_no_validos"}, default="num_valores_no_validos"
-        Summary column or columns used to sort the result.
+    sort_by : Sequence[str] or str, default="num_valores_no_validos"
+        Summary column or columns used to sort the result. Valid values are
+        ``"nombre_columna"``, ``"tipo_dato"``, ``"num_valores_distintos"``,
+        ``"num_valores_no_validos"``, and ``"porcentaje_no_validos"``.
 
-    ascending : Sequence[bool] | bool, default=True
+    ascending : Sequence[bool] or bool, default=True
         Whether to sort each corresponding column in ascending order.
-
         If a sequence is provided, it must have the same length as
         ``sort_by``.
 

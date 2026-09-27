@@ -20,7 +20,7 @@ import pandas as pd
 
 def remove_redundant_sensor_noise_columns(
     df: pd.DataFrame,
-    tolerances: dict,
+    tolerances: dict[str, float],
 ) -> tuple[pd.DataFrame, list[str]]:
     """
     Remove redundant sensor noise columns.
@@ -38,7 +38,7 @@ def remove_redundant_sensor_noise_columns(
         Input DataFrame containing original sensor columns and generated noise
         handling columns.
 
-    tolerances : dict
+    tolerances : dict[str, float]
         Dictionary containing the sensors previously processed by the sensor
         noise handler.
 
@@ -114,7 +114,7 @@ def remove_constant_columns(
         Input DataFrame.
 
     dropna : bool, default=True
-        Whether missing values should be ignored when counting unique values.
+        Whether to exclude missing values when counting unique values.
 
     excluded_columns : list[str] or None, default=None
         Columns excluded from the constant-value evaluation.
@@ -166,11 +166,11 @@ def remove_replaceable_columns(
     df : pd.DataFrame
         Input DataFrame.
 
-    replacement_prefix : str | None, default=None
+    replacement_prefix : str or None, default=None
         Prefix used to identify replacement columns.
         Example: ``"clean_"`` matches ``clean_temperature``.
 
-    replacement_suffix : str | None, default=None
+    replacement_suffix : str or None, default=None
         Suffix used to identify replacement columns.
         Example: ``"_clean"`` matches ``temperature_clean``.
 

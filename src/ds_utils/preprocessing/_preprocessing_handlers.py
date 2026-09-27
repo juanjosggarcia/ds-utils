@@ -62,8 +62,6 @@ def handle_duplicates(
     df[col_time] = pd.to_datetime(df[col_time])
     df = df.sort_values(col_time)
     
-    # Eliminar duplicados según keep
-    # df_clean = df.drop_duplicates(subset=[col_name], keep=keep)
 
     # Boolean mask: True para filas que se mantienen
     mask = ~df.duplicated(subset=[col_time], keep=keep)
@@ -95,7 +93,7 @@ def handle_time_split(
     col_time : str
         Name of the datetime column.
 
-    cutoff_date : str | pd.Timestamp
+    cutoff_date : str or pd.Timestamp
         Cutoff date used to split the DataFrame.
 
         - If a full timestamp is provided, the split is performed at that
@@ -242,7 +240,7 @@ def handle_sensor_noise(
     The function also provides optional features useful for machine learning
     models.
 
-    Args
+    Parameters
     ----
     df : pd.DataFrame
         Input DataFrame containing sensor measurements.
@@ -375,7 +373,7 @@ def handle_missing_values(
     df : pd.DataFrame
         Input DataFrame.
 
-    fill_value : object | dict[str, object] | None, default=None
+    fill_value : object or dict[str, object] or None, default=None
         Replacement value applied to missing data.
 
         - ``None``:
