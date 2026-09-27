@@ -24,6 +24,7 @@ eda = [
 ]
 
 ml = [
+    "python-dotenv>=1.0.0",
     "scikit-learn>=1.5",
 ]
 

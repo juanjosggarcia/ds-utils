@@ -3,6 +3,7 @@ import pandas as pd
 from typing import Literal
 from collections.abc import Sequence
 from datetime import datetime
+from pandas._libs.tslibs.nattype import NaTType
 
 from ds_utils.preprocessing._preprocessing_counters import count_missing_cells_by_column
 
@@ -177,7 +178,7 @@ def detect_timestamp(ts: str | int) -> str:
             return "Unknown timestamp format"
 
 
-def convert_timestamp(ts: str | int) -> pd.Timestamp | pd.NaT:
+def convert_timestamp(ts: str | int) -> pd.Timestamp | NaTType:
     """
     Detect the timestamp type and convert it to a datetime.
 

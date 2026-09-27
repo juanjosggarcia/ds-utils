@@ -169,7 +169,7 @@ Las dependencias están definidas en `pyproject.toml` según las necesidades de 
 |---|---|---|
 | **Base** | `numpy>=2.0`, `pandas>=2.2` | Preprocesamiento, auditoría de datos, series temporales y utilidades centrales. |
 | **Extra `eda`** | `matplotlib>=3.9`, `ipython>=8.0`, `jinja2>=3.1` | Generación de gráficos, estilos HTML interactivos y previsualizaciones en Jupyter. |
-| **Extra `ml`** | `scikit-learn>=1.5` | Algoritmos de soporte, proyecciones espaciales y modelos de Machine Learning. |
+| **Extra `ml`** | `python-dotenv>=1.0.0`, `scikit-learn>=1.5` | Algoritmos de soporte, proyecciones espaciales y modelos de Machine Learning, junto con la gestión de configuración y credenciales mediante variables de entorno. |
 | **Grupo `dev`** | `pytest>=8.0`, `ruff>=0.12`, `mypy>=1.0` | Suite de pruebas unitarias, formateo, linting y chequeo estático de tipos. |
 
 ---
