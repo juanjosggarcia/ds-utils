@@ -1,9 +1,6 @@
 import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
-from sklearn.metrics import mean_absolute_error, mean_squared_error
-# import matplotlib.pyplot as plt
-# import seaborn as sns
 import re
 
 
@@ -17,22 +14,36 @@ import re
 
 # region Aux Functions ---------------------------------------------------------
 
-def bold(text: str) -> str:
-    return rf"$\bf{{{text}}}$"
-
 def normalize_model_name(model_name: str) -> str:
     """
-    Convierte un nombre de modelo a un identificador en snake_case.
+    Convert a model name to a ``snake_case`` identifier.
 
-    Ejemplos:
-        "Isolation Forest" -> "isolation_forest"
-        "Local Outlier Factor" -> "local_outlier_factor"
-        "One-Class SVM" -> "one_class_svm"
-        "Elliptic Envelope" -> "elliptic_envelope"
+    Parameters
+    ----------
+    model_name : str
+        Model name to normalize.
+
+    Returns
+    -------
+    str
+        Normalized model name in ``snake_case``.
+
+    Examples
+    --------
+    >>> normalize_model_name("Isolation Forest")
+    'isolation_forest'
+    >>> normalize_model_name("Local Outlier Factor")
+    'local_outlier_factor'
+    >>> normalize_model_name("One-Class SVM")
+    'one_class_svm'
+    >>> normalize_model_name("Elliptic Envelope")
+    'elliptic_envelope'
     """
+
     model_name = model_name.lower()
     model_name = re.sub(r"[^a-z0-9]+", "_", model_name)
     model_name = re.sub(r"_+", "_", model_name)
+
     return model_name.strip("_")
 
 # region Aux Functions ---------------------------------------------------------
@@ -40,32 +51,37 @@ def normalize_model_name(model_name: str) -> str:
 
 # region Machine Learning Functions --------------------------------------------
 
-def format_max_features(max_features: str | float | int | None, n_features: int) -> str:
+def format_max_features(
+    max_features: str | float | int | None, 
+    n_features: int
+) -> str:
     """
-    Formats the `max_features` parameter from tree-based models into a readable string.
+    Format the ``max_features`` parameter from tree-based models.
 
-    Converts typical sklearn values ('sqrt', 'log2', float, None)
-    into a more interpretable representation, including the percentage
-    of features used relative to the total.
+    Converts typical scikit-learn ``max_features`` values into a readable
+    string representation, including the fraction of features used relative
+    to the total number of features.
 
-    Args:
-        max_features (str | float | int | None):
-            Value of the max_features parameter. Can be:
-            - 'sqrt'  -> square root of total features
-            - 'log2'  -> base-2 logarithm of total features
-            - float   -> fraction (0.0 - 1.0)
-            - None    -> use all features
+    Parameters
+    ----------
+    max_features : str, float, int, or None
+        Value of the ``max_features`` parameter. Supported values are:
 
-        n_features (int):
-            Total number of features in the dataset.
+        - ``"sqrt"``: square root of the total number of features.
+        - ``"log2"``: base-2 logarithm of the total number of features.
+        - ``float``: fraction of features to use.
+        - ``int``: number of features to use.
+        - ``None``: use all features.
 
-    Returns:
-        str:
-            Formatted representation, for example:
-            - "sqrt (0.32)"
-            - "log2 (0.21)"
-            - "fraction (0.50)"
-            - "all (1.00)"
+    n_features : int
+        Total number of features in the dataset.
+
+    Returns
+    -------
+    str
+        Formatted representation of the ``max_features`` value. Examples
+        include ``"sqrt (0.32)"``, ``"log2 (0.21)"``,
+        ``"fraction (0.50)"``, and ``"all (1.00)"``.
     """
 
     if max_features == "sqrt":
@@ -86,23 +102,32 @@ def format_max_features(max_features: str | float | int | None, n_features: int)
 
 def extract_used_params(all_params: dict, used_params: dict):
     """
-    Extracts only the parameters defined by the user from the full parameter set.
+    Extract only the parameters defined by the user from the full parameter set.
 
-    Args:
-        all_params (dict): Dictionary with all model parameters (e.g. model.get_params()).
-        used_params (dict): Dictionary with only the parameters defined by the user.
+    Parameters
+    ----------
+    all_params : dict
+        Dictionary containing all model parameters, such as those returned by
+        ``model.get_params()``.
 
-    Returns:
-        dict: Dictionary containing only the used parameters with their actual values.
+    used_params : dict
+        Dictionary containing only the parameters explicitly defined by the
+        user.
+
+    Returns
+    -------
+    dict
+        Dictionary containing only the parameters defined by the user that
+        are present in ``all_params``.
     """
 
-    return {k: all_params[k] for k in used_params.keys() if k in all_params}
+    extracted_params = {
+        parameter: all_params[parameter]
+        for parameter in used_params
+        if parameter in all_params
+    }
 
-
-
-
-
-
+    return extracted_params
 
 
 def explain_anomalies(
@@ -129,22 +154,27 @@ def explain_anomalies(
         Name of the timestamp column.
 
     anomaly_scores : ArrayLike
-        Anomaly scores returned by the anomaly detector.
+        Anomaly scores returned by the anomaly detector. Must contain one
+        score for each row in ``df``.
 
     anomaly_mask : ArrayLike
-        Boolean mask identifying the detected anomalies.
-        True indicates an anomaly and False a normal observation.
+        Boolean mask identifying the detected anomalies. ``True`` indicates
+        an anomaly and ``False`` indicates a normal observation. Must contain
+        one value for each row in ``df``.
 
     top_features : int, default=5
-        Number of variables to include in the explanation.
+        Maximum number of variables to include in the explanation for each
+        anomaly.
 
     ascending : bool, default=True
-        Sort order applied to the anomaly scores in the returned DataFrame.
+        Whether to sort the returned DataFrame by anomaly score in ascending
+        order.
 
     Returns
     -------
     pd.DataFrame
-        One row per detected anomaly containing:
+        DataFrame containing one row per detected anomaly with the following
+        columns:
 
         - timestamp
         - score
@@ -220,160 +250,6 @@ def explain_anomalies(
     )
 
 
-# def explain_anomalies_OLD(
-#     X: pd.DataFrame,
-#     anomaly_scores: np.ndarray,
-#     anomaly_predictions: np.ndarray,
-#     timestamp: pd.Series | None = None,
-#     top_features: int = 5,
-# ) -> pd.DataFrame:
-#     """
-#     Generate human-readable explanations for detected anomalies.
-
-#     For each anomalous sample, the function compares every numeric feature
-#     against its historical median and identifies the variables with the
-#     largest relative deviation.
-
-#     Parameters
-#     ----------
-#     X : pd.DataFrame
-#         Dataset used for anomaly detection.
-
-#     anomaly_scores : np.ndarray
-#         Scores returned by the anomaly detector.
-
-#     anomaly_predictions : np.ndarray
-#         Predictions returned by the anomaly detector.
-#         Expected values are 1 (normal) and -1 (anomaly).
-
-#     timestamp : pd.Series, optional
-#         Timestamp associated with each sample.
-
-#     top_features : int, default=5
-#         Number of most abnormal variables to include.
-
-#     Returns
-#     -------
-#     pd.DataFrame
-#         One row per detected anomaly containing:
-
-#         - timestamp
-#         - score
-#         - summary (formatted string)
-#         - details (list of dictionaries)
-#     """
-
-#     numeric_columns = X.select_dtypes(include="number").columns
-
-#     # Use the median as the reference because it is more robust to outliers.
-#     medians = X[numeric_columns].median()
-
-#     EPSILON = 1e-12
-
-#     explanations = []
-
-#     anomaly_indices = np.where(anomaly_predictions == -1)[0]
-
-#     for idx in anomaly_indices:
-
-#         row = X.iloc[idx]
-
-#         feature_details = []
-
-#         for col in numeric_columns:
-
-#             current = float(row[col])
-#             reference = float(medians[col])
-
-#             # Avoid division by zero.
-#             ratio = current / max(abs(reference), EPSILON)
-
-#             # Symmetric deviation score.
-#             deviation = abs(np.log(max(abs(ratio), EPSILON)))
-
-#             feature_details.append({
-#                 "feature": col,
-#                 "current": current,
-#                 "reference": reference,
-#                 "ratio": ratio,
-#                 "deviation": deviation,
-#             })
-
-#         feature_details = sorted(
-#             feature_details,
-#             key=lambda x: x["deviation"],
-#             reverse=True,
-#         )[:top_features]
-
-#         summary = ", ".join(
-#             f"{item['feature']} ({'↑' if item['ratio'] >= 1 else '↓'}×{item['ratio']:.1f})"
-#             for item in feature_details
-#         )
-
-#         explanations.append({
-#             "timestamp": None if timestamp is None else timestamp.iloc[idx],
-#             "score": float(anomaly_scores[idx]),
-#             "summary": summary,
-#             "details": feature_details,
-#         })
-
-#     return (
-#         pd.DataFrame(explanations)
-#         .sort_values("score")
-#         .reset_index(drop=True)
-#     )
-
-
-
-# def normalize_anomaly_scores_min_max(
-#     scores: pd.Series | pd.DataFrame,
-#     lower_percentile: float = 0.01,
-#     upper_percentile: float = 0.99,
-# ) -> pd.Series | pd.DataFrame:
-#     """
-#     Normalize anomaly scores using robust inverted Min-Max scaling.
-
-#     Each score column is normalized independently to the range [0, 1], where:
-
-#     - 0 represents the least anomalous observations.
-#     - 1 represents the most anomalous observations.
-
-#     Instead of using the absolute minimum and maximum values, the normalization
-#     is performed between configurable percentiles to reduce the influence of
-#     extreme outliers. Values outside this interval are clipped to [0, 1].
-
-#     Parameters
-#     ----------
-#     scores : pd.DataFrame
-#         DataFrame whose columns contain anomaly scores from one or more models.
-
-#     lower_percentile : float, default=0.01
-#         Lower percentile used as the normalization minimum.
-
-#     upper_percentile : float, default=0.99
-#         Upper percentile used as the normalization maximum.
-
-#     Returns
-#     -------
-#     pd.DataFrame
-#         DataFrame with the normalized scores.
-#     """
-
-#     def _normalize(col: pd.Series) -> pd.Series:
-
-#         lower = col.quantile(lower_percentile)
-#         upper = col.quantile(upper_percentile)
-
-#         if upper == lower:
-#             return pd.Series(0.0, index=col.index)
-
-#         normalized = 1 - (col - lower) / (upper - lower)
-
-#         return normalized.clip(0, 1)
-
-#     return scores.apply(_normalize)
-
-
 def normalize_anomaly_scores_min_max(
     scores: pd.Series | pd.DataFrame,
     lower_percentile: float = 0.01,
@@ -382,14 +258,14 @@ def normalize_anomaly_scores_min_max(
     """
     Normalize anomaly scores using robust inverted Min-Max scaling.
 
-    Each score column is normalized independently to the range [0, 1], where:
+    Each score column is normalized independently to the range ``[0, 1]``,
+    where ``0`` represents the least anomalous observations and ``1``
+    represents the most anomalous observations.
 
-    - 0 represents the least anomalous observations.
-    - 1 represents the most anomalous observations.
-
-    Instead of using the absolute minimum and maximum values, the normalization
-    is performed between configurable percentiles to reduce the influence of
-    extreme outliers. Values outside this interval are clipped to [0, 1].
+    Instead of using the absolute minimum and maximum values, the
+    normalization is performed between configurable percentiles to reduce
+    the influence of extreme outliers. Values outside this interval are
+    clipped to ``[0, 1]``.
 
     This function assumes that lower scores correspond to more anomalous
     observations.
@@ -397,14 +273,16 @@ def normalize_anomaly_scores_min_max(
     Parameters
     ----------
     scores : pd.Series or pd.DataFrame
-        Anomaly scores to normalize. When a DataFrame is provided, each column
-        is normalized independently.
+        Anomaly scores to normalize. If a DataFrame is provided, each
+        column is normalized independently.
 
     lower_percentile : float, default=0.01
-        Lower percentile used as the normalization minimum.
+        Lower percentile used as the normalization minimum. Must satisfy
+        ``0 <= lower_percentile < upper_percentile <= 1``.
 
     upper_percentile : float, default=0.99
-        Upper percentile used as the normalization maximum.
+        Upper percentile used as the normalization maximum. Must satisfy
+        ``lower_percentile < upper_percentile <= 1``.
 
     Returns
     -------
@@ -414,8 +292,8 @@ def normalize_anomaly_scores_min_max(
     Raises
     ------
     ValueError
-        If `lower_percentile` and `upper_percentile` do not satisfy
-        `0 <= lower_percentile < upper_percentile <= 1`.
+        If ``lower_percentile`` and ``upper_percentile`` do not satisfy
+        ``0 <= lower_percentile < upper_percentile <= 1``.
     """
 
     if not 0 <= lower_percentile < upper_percentile <= 1:
@@ -444,35 +322,15 @@ def normalize_anomaly_scores_min_max(
     return normalized
 
 
-
-# def normalize_anomaly_scores_rank(
-#     scores: pd.Series | pd.DataFrame
-# ) -> pd.Series | pd.DataFrame:
-#     """
-#     Normalize anomaly scores using percentile ranking.
-
-#     Each model is transformed independently so that:
-#         1 -> most anomalous observations
-#         0 -> least anomalous observations
-
-#     This normalization makes anomaly scores comparable across models while
-#     preserving their relative ordering.
-#     """
-
-#     return scores.apply(
-#         lambda col: 1 - col.rank(pct=True)
-#     )
-
 def normalize_anomaly_scores_rank(
     scores: pd.Series | pd.DataFrame,
 ) -> pd.Series | pd.DataFrame:
     """
     Normalize anomaly scores using percentile ranking.
 
-    Scores are transformed independently so that:
-
-    - 0 represents the least anomalous observations.
-    - 1 represents the most anomalous observations.
+    Scores are transformed independently so that ``0`` represents the least
+    anomalous observations and ``1`` represents the most anomalous
+    observations.
 
     The transformation preserves the relative ordering of the scores while
     making the outputs of different anomaly detection models directly
@@ -482,7 +340,7 @@ def normalize_anomaly_scores_rank(
     Parameters
     ----------
     scores : pd.Series or pd.DataFrame
-        Anomaly scores to normalize. When a DataFrame is provided, each column
+        Anomaly scores to normalize. If a DataFrame is provided, each column
         is normalized independently.
 
     Returns

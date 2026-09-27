@@ -13,6 +13,40 @@ import matplotlib.dates as mdates
 
 # region Aux Class -------------------------------------------------------------
 
+def bold_matplotlib(text: str) -> str:
+    """
+    Format text as bold MathText for use in Matplotlib.
+
+    The returned string can be embedded in a larger Matplotlib text
+    expression, allowing only the specified portion to be rendered in
+    bold. Spaces are explicitly escaped so that they are preserved when
+    the text is interpreted as MathText.
+
+    Parameters
+    ----------
+    text : str
+        Text to render in bold.
+
+    Returns
+    -------
+    str
+        MathText expression that renders ``text`` in bold when used by
+        Matplotlib text elements such as ``title``, ``xlabel``, ``ylabel``,
+        or ``text``.
+
+    Examples
+    --------
+    >>> bold("Model performance")
+    '$\\\\mathbf{Model\\\\  performance}$'
+    >>> import matplotlib.pyplot as plt
+    >>> plt.title(f"Performance of {bold('Isolation Forest')} model")
+    """
+    return rf"$\mathbf{{{text.replace(' ', r'\ ')}}}$"
+
+# endregion Aux Class ----------------------------------------------------------
+
+# region Typing Class ----------------------------------------------------------
+
 class Transformer(Protocol):
     """Protocol for objects implementing a fit-transform operation."""
 
@@ -20,16 +54,13 @@ class Transformer(Protocol):
         """Fit the transformer and transform the input data."""
         ...
 
-# endregion Aux Class ----------------------------------------------------------
+# endregion Typing Class -------------------------------------------------------
 
 # region CONSTANTS -------------------------------------------------------------
 
 # endregion CONSTANTS ----------------------------------------------------------
 
 # region Aux Functions ---------------------------------------------------------
-
-def bold(text: str) -> str:
-    return rf"$\bf{{{text}}}$"
 
 # endregion Aux Functions ------------------------------------------------------
 
