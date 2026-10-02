@@ -309,9 +309,16 @@ def convert_timestamps_vectorized(
         raw_non_numeric = values[is_non_numeric].dropna()
 
         if not raw_non_numeric.empty:
+
             parsed_iso = pd.to_datetime(
-                raw_non_numeric, utc=utc, errors="coerce"
+                raw_non_numeric, 
+                utc=True, 
+                errors="coerce",
+                format="mixed",
             )
+            if not utc:
+                parsed_iso = parsed_iso.dt.tz_localize(None)
+
             result.loc[parsed_iso.index] = parsed_iso
 
     return result

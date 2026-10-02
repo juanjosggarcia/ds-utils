@@ -46,10 +46,12 @@ from ._preprocessing_others import (
     reset_index_safe,
     detect_timestamp,
     convert_timestamp,
+    convert_timestamps_vectorized,
     get_columns_summary
 )
 
 
 from ._preprocessing_ml import (
-    prepare_dataframe_for_ml
+    prepare_dataframe_for_ml,
+    regression_metrics
 )

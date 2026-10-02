@@ -46,7 +46,7 @@ Disponible a través de la fachada pública `ds_utils.preprocessing.preprocessin
   * `handle_missing_values`: auditoría detallada e imputación selectiva mediante valores escalares o mapeos por columna.
 
 * **Series temporales y frecuencias**:
-  * `detect_timestamp` y `convert_timestamp`: detección y conversión polimórfica de marcas temporales (segundos, milisegundos, microsegundos, nanosegundos y cadenas ISO 8601).
+  * `detect_timestamp`, `convert_timestamp` y `convert_timestamps_vectorized`: detección y conversión polimórfica de marcas temporales (segundos, milisegundos, microsegundos, nanosegundos y cadenas ISO 8601).
   * `handle_duplicates` y `find_duplicates`: detección y resolución de timestamps repetidos conservando primera o última ocurrencia.
   * `handle_time_split`: división temporal controlada en modos `'tail'` y `'head'`.
   * `handle_time_bursts`: filtrado de ráfagas temporales (*bursts*) respetando un intervalo mínimo tolerable.
@@ -81,7 +81,7 @@ Disponible a través de la fachada pública `ds_utils.preprocessing.preprocessin
   * `show_df_details`: informe diagnóstico completo (dimensiones, tipos, celdas nulas, columnas constantes y duplicados).
   * `show_df_differences`: análisis de discrepancias entre dos versiones de un DataFrame (filas añadidas/eliminadas, columnas y diferencias celda a celda).
   * `show_noise_summary`: desglose tabular de niveles de ruido y correcciones por sensor.
-  * Utilidades de formateo: `print_table_section`, `print_list_section`, `print_dict_section`, `print_section`, `print_console_section` y `format_time_gap`.
+  * Utilidades de formateo: `print_html_table`, `print_html_list`, `print_html_dict`, `print_html_section`, `print_markdown_table`, `print_markdown_list`, `print_markdown_section`, `print_console_table`, `print_console_list`, `print_console_section` y `format_time_gap`.
 
 ---
 
@@ -154,7 +154,7 @@ uv sync --all-extras
 ```
 
 #### Dependencias de desarrollo:
-Para ejecutar pruebas con `pytest` o herramientas de calidad de código (`ruff`, `mypy`):
+Para ejecutar los notebook en vscode con `ipykernel`, pruebas con `pytest` o herramientas de calidad de código (`ruff`, `mypy`):
 ```bash
 uv sync --all-extras --dev
 ```
@@ -168,9 +168,9 @@ Las dependencias están definidas en `pyproject.toml` según las necesidades de 
 | Componente | Dependencias requeridas | Finalidad principal |
 |---|---|---|
 | **Base** | `numpy>=2.0`, `pandas>=2.2` | Preprocesamiento, auditoría de datos, series temporales y utilidades centrales. |
-| **Extra `eda`** | `matplotlib>=3.9`, `ipython>=8.0`, `jinja2>=3.1` | Generación de gráficos, estilos HTML interactivos y previsualizaciones en Jupyter. |
+| **Extra `eda`** | `matplotlib>=3.9`, `ipython>=8.0`, `jinja2>=3.1`, `tabulate>=0.10.0` | Generación de gráficos, estilos HTML interactivos y previsualizaciones en Jupyter. |
 | **Extra `ml`** | `python-dotenv>=1.0.0`, `scikit-learn>=1.5` | Algoritmos de soporte, proyecciones espaciales y modelos de Machine Learning, junto con la gestión de configuración y credenciales mediante variables de entorno. |
-| **Grupo `dev`** | `pytest>=8.0`, `ruff>=0.12`, `mypy>=1.0` | Suite de pruebas unitarias, formateo, linting y chequeo estático de tipos. |
+| **Grupo `dev`** | `pytest>=8.0`, `ruff>=0.12`, `mypy>=1.0`, `ipykernel>=7.3.0` | Suite de pruebas unitarias, formateo, linting, chequeo estático de tipos y cuadernos jupyter en vscode. |
 
 ---
 

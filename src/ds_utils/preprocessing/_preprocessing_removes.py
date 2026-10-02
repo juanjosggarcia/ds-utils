@@ -131,12 +131,12 @@ def remove_constant_columns(
 
     df = df.copy()
 
-    excluded_columns = set(excluded_columns or [])
+    excluded = set(excluded_columns or [])
 
     constant_columns = [
         column
         for column in df.columns
-        if column not in excluded_columns
+        if column not in excluded
         and df[column].nunique(dropna=dropna) == 1
     ]
 

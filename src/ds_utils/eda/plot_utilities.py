@@ -188,88 +188,6 @@ def plot_sensor_signals(
         plt.show()
 
 
-
-# TODO deprecated
-# def plot_sensor_signals_old(
-#     df: pd.DataFrame,
-#     col_time: str,
-#     tolerances: dict[str, float],
-# ) -> None:
-#     """
-#     Plot raw and cleaned sensor signals, highlighting detected noise samples.
-
-#     Parameters
-#     ----------
-#     df : pd.DataFrame
-#         DataFrame containing the sensor data.
-
-#     col_time : str
-#         Name of the column containing the time values.
-
-#     tolerances : dict[str, float]
-#         Mapping of sensor names to their corresponding noise thresholds.
-
-#     Notes
-#     -----
-#     The names of the cleaned-signal and noise-indicator columns are derived from
-#     the suffixes defined in ``FEATURES_CONFIG``.
-#     """
-
-#     if col_time not in df.columns:
-#         raise ValueError(f"Column '{col_time}' not found in DataFrame.")
-
-#     for sensor, threshold in tolerances.items():
-
-#         if sensor not in df.columns:
-#             print(f"Sensor '{sensor}' not found. Skipping.")
-#             continue
-
-#         plt.figure(figsize=(15, 5))
-
-#         # Raw signal
-#         plt.plot(
-#             df[col_time],
-#             df[sensor],
-#             color="darkgray",
-#             alpha=0.9,
-#             linewidth=1.2,
-#             label="Raw",
-#         )
-
-#         # Clean signal
-#         clean_col = f"{sensor}{FEATURES_CONFIG.CLEAN_SUFFIX}"
-#         if clean_col in df.columns:
-#             plt.plot(
-#                 df[col_time],
-#                 df[clean_col],
-#                 color="green",
-#                 linewidth=2,
-#                 label="Limpio",
-#             )
-
-#         # Detected noise
-#         noise_col = f"{sensor}{FEATURES_CONFIG.IS_NOISE_SUFFIX}"
-#         if noise_col in df.columns:
-#             noise_df = df[df[noise_col]]
-#             plt.scatter(
-#                 noise_df[col_time],
-#                 noise_df[sensor],
-#                 color="red",
-#                 s=20,
-#                 label="Ruido Detectado",
-#             )
-
-#         plt.title(
-#             rf"Análisis de Ruido en '{sensor}' $\bf{{(Umbral: >\ {threshold})}}$"
-#         )
-#         plt.xlabel("Tiempo")
-#         plt.ylabel(sensor)
-#         plt.grid(True, alpha=0.3)
-#         plt.legend()
-#         plt.tight_layout()
-#         plt.show()
-
-
 def plot_model_anomaly_scores(
     df: pd.DataFrame,
     col_time: str,
@@ -431,27 +349,29 @@ def plot_model_anomaly_score_distribution(
 def plot_model_predictions(
     y_real: pd.Series,
     y_pred: ArrayLike,
-    mae: float | None = None,
     title: str = "Rendimiento del modelo",
     steps: int | None = None,
+    x_label: str = "Muestra",
+    y_label: str = "Valor",
     color_real: str = "black",
     color_pred: str = "green",
 ) -> None:
     """
-    Plot real and predicted values over the observation sequence.
+    Plots actual values against model predictions.
+
+    The function accepts any structure compatible with ArrayLike
+    (lists, NumPy arrays, pandas Series, etc.). If `y_real` has a
+    DatetimeIndex, it is automatically used as the X-axis.
+    Otherwise, sequential positions are used.
 
     Parameters
     ----------
-    y_real : pd.Series
+    y_real : ArrayLike
         Observed target values. A DatetimeIndex is used for the x-axis when
         available.
 
     y_pred : ArrayLike
         Predicted target values.
-
-    mae : float, optional
-        Mean absolute error displayed in the figure title. If ``None``, the MAE
-        is computed from ``y_real`` and ``y_pred``.
 
     title : str, default="Rendimiento del modelo"
         Figure title.
@@ -460,40 +380,85 @@ def plot_model_predictions(
         Number of initial observations to plot. If ``None``, all observations
         are plotted.
 
+    x_label : str, default="Muestra"
+        X-axis label.
+
+    y_label : str, default="Valor"
+        Y-axis label.
+
     color_real : str, default="black"
         Color used for the observed values.
 
     color_pred : str, default="green"
         Color used for the predicted values.
+
+    Raises
+    ------
+    ValueError
+        If `y_real` and `y_pred` do not have the same length.
+
+    Notes
+    -----
+    If `y_real` is a pandas Series with a DatetimeIndex, the dates
+    are used as the X-axis. For any other type of input,
+    sequential positions are used: 0, 1, 2, ...
     """
 
-    # Slice if needed
-    if steps is not None:
-        y_real = y_real.iloc[:steps]
-        y_pred = y_pred[:steps]
+    # Preserve the optional pandas index before converting to NumPy.
+    index = getattr(y_real, "index", None)
 
-    # X axis
-    x_axis = (
-        y_real.index if isinstance(y_real.index, pd.DatetimeIndex)
-        else range(len(y_real))
+    # Normalize inputs to one-dimensional NumPy arrays.
+    y_real_values = np.asarray(y_real).ravel()
+    y_pred_values = np.asarray(y_pred).ravel()
+
+    if len(y_real_values) != len(y_pred_values):
+        raise ValueError(
+            "y_real and y_pred must have the same length."
+        )
+
+    # Limit the number of samples if requested.
+    if steps is not None:
+        y_real_values = y_real_values[:steps]
+        y_pred_values = y_pred_values[:steps]
+
+        if isinstance(index, pd.DatetimeIndex):
+            index = index[:steps]
+
+    # Use DatetimeIndex when available; otherwise use sequential positions.
+    if isinstance(index, pd.DatetimeIndex):
+        x_axis = index
+    else:
+        x_axis = range(len(y_real_values))
+
+    fig, ax = plt.subplots(figsize=(15, 6))
+
+    ax.plot(
+        x_axis,
+        y_real_values,
+        label="Realidad",
+        color=color_real,
+        alpha=0.7,
     )
 
-    # MAE fallback
-    if mae is None:
-        # from sklearn.metrics import mean_absolute_error
-        # mae = mean_absolute_error(y_real, y_pred)
+    ax.plot(
+        x_axis,
+        y_pred_values,
+        label="Predicción",
+        color=color_pred,
+        linestyle="--",
+        alpha=0.8,
+    )
 
-        mae = np.mean(np.abs(np.asarray(y_real) - np.asarray(y_pred)))
+    ax.set_title(title)
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    ax.legend()
+    ax.grid(True, alpha=0.3)
 
-    plt.figure(figsize=(15, 6))
-    plt.plot(x_axis, y_real, label="Realidad", color=color_real, alpha=0.7)
-    plt.plot(x_axis, y_pred, label="Predicción", color=color_pred, linestyle="--", alpha=0.8)
+    if isinstance(index, pd.DatetimeIndex):
+        fig.autofmt_xdate()
 
-    plt.title(f"{title} — MAE: {mae:.4f}")
-    plt.xlabel("Tiempo")
-    plt.ylabel("Valor")
-    plt.legend()
-    plt.grid(True, alpha=0.3)
+    fig.tight_layout()
     plt.show()
 
 
@@ -649,7 +614,7 @@ def plot_model_feature_importance(
     return top_feats
 
 
-# endregion Plots --------------------------------------------------------------
+# endregion Plots Functions ----------------------------------------------------
 
 
 # region Plots Functions with "lazy import" ------------------------------------

@@ -7,12 +7,17 @@ from ds_utils.preprocessing.preprocessing_config import (
     FEATURES_CONFIG,
     FeatureNamingConfig,
 )
+from ds_utils.preprocessing import preprocessing_utilities
 
 import numpy as np
 import pandas as pd
+from typing import Literal
+from collections.abc import Iterable
+from html import escape as html_escape
+from tabulate import tabulate
 from pandas.tseries.frequencies import to_offset
 from pandas.tseries.offsets import Week, Day, Hour, Minute, Second
-from IPython.display import display, HTML
+from IPython.display import display, HTML, Math, Markdown, Latex
 
 # region Aux Class -------------------------------------------------------------
 
@@ -101,14 +106,17 @@ def format_time_gap(freq: str, periods: int) -> str:
 
 # region Preview Functions -----------------------------------------------------
 
-def print_table_section(
-    title: str, 
-    content: pd.DataFrame | dict | list, 
+# region HTML Functions --------------------------------------------------------
+
+def print_html_table(
+    content: pd.DataFrame | dict | list,
+    header: str | None = None,
     show_table_headers: bool = True,
     show_table_index: bool = True,
     header_color: Color = DEFAULT_COLOR, 
     header_align: Alignment = Alignment.LEFT, 
-    footer: None | str = None
+    footer: str | None = None,
+    escape_html: bool = True
 ) -> None:
     """
     Display a formatted HTML table section.
@@ -120,9 +128,6 @@ def print_table_section(
 
     Parameters
     ----------
-    title : str
-        Section title displayed above the table.
-
     content : pd.DataFrame, dict, or list
         Tabular content to display.
 
@@ -131,6 +136,9 @@ def print_table_section(
         - ``dict`` with scalar values: displayed as key-value pairs.
         - ``list`` containing lists or dictionaries: converted to a
           DataFrame.
+    
+    header : str or None, default=None
+        Optional section title displayed above the table.
 
     show_table_headers : bool, default=True
         Whether to display the table column headers.
@@ -144,8 +152,15 @@ def print_table_section(
     header_align : Alignment, default=Alignment.LEFT
         Horizontal alignment of the section header.
 
-    footer : str, optional
-        Text displayed below the table.
+    footer : str or None, default=None
+        Optional text displayed below the content.
+
+    escape_html : bool, default=True
+        Whether to escape HTML markup in ``header`` and ``footer``.
+        If ``True``, HTML characters are escaped and rendered as plain text.
+        If ``False``, the values are inserted directly into the generated
+        HTML and any valid HTML markup is rendered. Disabling this option
+        should only be done for trusted content.
 
     Raises
     ------
@@ -165,9 +180,13 @@ def print_table_section(
     text_font_size = "14px"
     content_margin_top = "8px"
 
+    if escape_html:
+        header = html_escape(header) if header else header
+        footer = html_escape(footer) if footer else footer
+
     # Generar tabla HTML según tipo de contenido
     if len(content) == 0:
-            table_html = "La tabla no tiene ningun elemento"
+            table_html = "La tabla no tiene ningún elemento"
 
     elif isinstance(content, pd.DataFrame):
         # Mostrar índice si tiene nombre, pero dejar ocultar cabeceras horizontal
@@ -204,10 +223,10 @@ def print_table_section(
         raise TypeError("Content must be a pandas DataFrame, dict or list of (lists or dict)")
 
     # Bloque del titulo
-    if title:
+    if header:
         html_title = f"""
             <h2 style='text-align:{header_align.value}; color:{header_color.value}; 
-                    font-size:{header_font_size}; margin:0;'>{title}</h2>
+                    font-size:{header_font_size}; margin:0;'>{header}</h2>
             <hr style='border:1px solid {header_color.value}; margin:5px 10px 10px 0;'>
         """
     else:
@@ -234,13 +253,14 @@ def print_table_section(
     display(HTML(html))
 
 
-def print_list_section(
-    title: str, 
-    items: list[str], 
+def print_html_list(
+    items: Iterable[str],
+    numbered: bool = False,
+    header: str | None = None,
     header_color: Color = DEFAULT_COLOR,
     header_align: Alignment = Alignment.LEFT,
-    numbered: bool = False,
-    footer: None | str = None
+    footer: str | None = None,
+    escape_html: bool = True
 ) -> None:
     """
     Display a formatted HTML list section.
@@ -250,11 +270,15 @@ def print_list_section(
 
     Parameters
     ----------
-    title : str
-        Section title displayed above the list.
-
-    items : list[str]
+    items : Iterable[str]
         Items to display in the list.
+
+    numbered : bool, default=False
+        Whether to display the items as a numbered list. If ``False``,
+        an unordered list with bullet points is displayed.
+
+    header : str or None, default=None
+        Optional section title displayed above the list.
 
     header_color : Color, default=Color.BLACK
         Color used for the section header and separator line.
@@ -262,12 +286,15 @@ def print_list_section(
     header_align : Alignment, default=Alignment.LEFT
         Horizontal alignment of the section header.
 
-    numbered : bool, default=False
-        Whether to display the items as a numbered list. If ``False``,
-        an unordered list with bullet points is displayed.
+    footer : str or None, default=None
+        Optional text displayed below the content.
 
-    footer : str, optional
-        Text displayed below the list.
+    escape_html : bool, default=True
+        Whether to escape HTML markup in ``header`` and ``footer``.
+        If ``True``, HTML characters are escaped and rendered as plain text.
+        If ``False``, the values are inserted directly into the generated
+        HTML and any valid HTML markup is rendered. Disabling this option
+        should only be done for trusted content.
 
     Notes
     -----
@@ -278,6 +305,10 @@ def print_list_section(
     header_font_size = "18px"
     text_font_size = "14px"
     content_margin_top = "14px"
+
+    if escape_html:
+        header = html_escape(header) if header else header
+        footer = html_escape(footer) if footer else footer
 
     # Convertir lista a HTML
     list_html = "".join(f"<li>{item}</li>" for item in items)
@@ -298,9 +329,9 @@ def print_list_section(
         )
 
     # Bloque del título
-    if title:
+    if header:
         html_title = f"""
-            <h3 style="text-align:{header_align.value}; font-size:{header_font_size}; margin:0; color:{header_color.value};">{title}</h3>
+            <h3 style="text-align:{header_align.value}; font-size:{header_font_size}; margin:0; color:{header_color.value};">{header}</h3>
             <hr style="border:1px solid {header_color.value}; margin:5px 0;">
         """
     else:
@@ -325,12 +356,13 @@ def print_list_section(
     display(HTML(html))
 
 
-def print_dict_section(
-    title: str, 
-    content: dict, 
+def print_html_dict(
+    content: dict,
+    header: str | None = None,
     header_color: Color = DEFAULT_COLOR,
     header_align: Alignment = Alignment.LEFT,
-    footer: None | str = None
+    footer: str | None = None,
+    escape_html: bool = True
 ) -> None:
     """
     Display a dictionary as a formatted section.
@@ -340,11 +372,11 @@ def print_dict_section(
 
     Parameters
     ----------
-    title : str
-        Section title displayed above the content.
-
     content : dict
         Dictionary containing the key-value pairs to display.
+    
+    header : str or None, default=None
+        Optional section title displayed above the content.
 
     header_color : Color, default=DEFAULT_COLOR
         Color used for the section header and separator line.
@@ -354,6 +386,13 @@ def print_dict_section(
 
     footer : str or None, default=None
         Optional text displayed below the content.
+
+    escape_html : bool, default=True
+        Whether to escape HTML markup in ``header``, ``content`` and ``footer``.
+        If ``True``, HTML characters are escaped and rendered as plain text.
+        If ``False``, the values are inserted directly into the generated
+        HTML and any valid HTML markup is rendered. Disabling this option
+        should only be done for trusted content.
     """
 
     if not isinstance(content, dict):
@@ -364,36 +403,38 @@ def print_dict_section(
 
     content_text = pd.Series(content_str).to_string()
 
-    print_section(
-        title = title, 
+    print_html_section(
+        header = header, 
         content = content_text,
         header_color = header_color,
         header_align = header_align,
-        footer = footer
+        footer = footer,
+        escape_html = escape_html
     )
 
 
-def print_section(
-    title: str, 
-    content: str, 
+def print_html_section(
+    content: str,
+    header: str | None = None,
     header_color: Color = DEFAULT_COLOR,
     header_align: Alignment = Alignment.LEFT,
-    footer: None | str = None
+    footer: str | None = None,
+    escape_html: bool = True
 ) -> None:
     """
     Display a formatted HTML section.
 
-    The function displays a styled section containing a title, text content,
+    The function displays a styled section containing a header, text content,
     and an optional footer. The content is inserted directly into the
     generated HTML.
 
     Parameters
     ----------
-    title : str
-        Section title displayed above the content.
-
     content : str
         Text or HTML content displayed inside the section.
+
+    header : str or None, default=None
+        Optional section title displayed above the content.
 
     header_color : Color, default=Color.BLACK
         Color used for the section header and separator line.
@@ -401,8 +442,15 @@ def print_section(
     header_align : Alignment, default=Alignment.LEFT
         Horizontal alignment of the section header.
 
-    footer : str, optional
-        Text displayed below the content.
+    footer : str or None, default=None
+        Optional text displayed below the content.
+
+    escape_html : bool, default=True
+        Whether to escape HTML markup in ``header``, ``content`` and ``footer``.
+        If ``True``, HTML characters are escaped and rendered as plain text.
+        If ``False``, the values are inserted directly into the generated
+        HTML and any valid HTML markup is rendered. Disabling this option
+        should only be done for trusted content.
 
     Notes
     -----
@@ -417,11 +465,16 @@ def print_section(
     text_font_size = "14px"
     content_margin_top = "14px"
 
+    if escape_html:
+        header = html_escape(header) if header else header
+        content = html_escape(content)
+        footer = html_escape(footer) if footer else footer
+
     # Bloque del título
-    if title:
+    if header:
         html_title = f"""
             <h2 style='text-align:{header_align.value}; color:{header_color.value}; 
-                    font-size:{header_font_size}; margin:0;'>{title}</h2>
+                    font-size:{header_font_size}; margin:0;'>{header}</h2>
             <hr style='border:1px solid {header_color.value}; margin:5px 10px 10px 0;'>
         """
     else:
@@ -447,75 +500,654 @@ def print_section(
 
     display(HTML(html))
 
+# endregion HTML Functions -----------------------------------------------------
 
-def print_console_section(
-    title: str, 
+# region Markdown Functions ----------------------------------------------------
+
+def print_markdown_table(
+    content: pd.DataFrame | dict | list,
+    header: str | None = None,
+    header_separator: bool = True,
+    show_table_index: bool = True,
+    footer: str | None = None,
+) -> None:
+    """
+    Display a formatted Markdown table.
+
+    The function accepts a pandas DataFrame, a dictionary, or a list of
+    records and converts the input into a Markdown table. Dictionaries
+    with list-like values are converted directly into a DataFrame, while
+    dictionaries with scalar values are displayed as key-value pairs.
+
+    Parameters
+    ----------
+    content : pd.DataFrame, dict, or list
+        Tabular content to display.
+
+        - ``pd.DataFrame``: displayed directly as a Markdown table.
+        - ``dict`` with list values: each key is treated as a column name.
+        - ``dict`` with scalar values: displayed as key-value pairs.
+        - ``list`` containing lists or dictionaries: converted to a
+          DataFrame.
+
+    header : str or None, default=None
+        Optional section header displayed above the table.
+        Markdown syntax is supported.
+
+    header_separator : bool, default=True
+        Whether to display a horizontal separator below the header.
+
+    show_table_index : bool, default=True
+        Whether to display the DataFrame index.
+
+    footer : str or None, default=None
+        Optional footer displayed below the table as a Markdown block quote.
+        Markdown syntax is supported. Multi-line notes are supported, with
+        each line rendered as part of the block quote.
+
+    Raises
+    ------
+    TypeError
+        If ``content`` is not a supported type or a list contains elements
+        that cannot be converted into a table.
+
+    Notes
+    -----
+    Empty content is displayed as a message instead of an empty table.
+
+    The table column headers are always displayed, as they are required by
+    the Markdown table syntax.
+
+    The function displays the generated Markdown directly and returns
+    ``None``.
+    """
+
+    if len(content) == 0:
+        table_markdown = "La tabla no tiene ningún elemento"
+
+    elif isinstance(content, pd.DataFrame):
+        table_markdown = content.to_markdown(
+            index=show_table_index,
+            tablefmt="pipe",
+        )
+
+    elif isinstance(content, dict):
+        is_dict_of_lists = all(
+            isinstance(value, list)
+            for value in content.values()
+        )
+
+        if is_dict_of_lists:
+            df = pd.DataFrame(content)
+        else:
+            df = pd.DataFrame(
+                list(content.items()),
+                columns=["Key", "Value"],
+            )
+
+        table_markdown = df.to_markdown(
+            index=False,
+            tablefmt="pipe",
+        )
+
+    elif isinstance(content, list):
+        if all(isinstance(item, (list, dict)) for item in content):
+            df = pd.DataFrame(content)
+
+            table_markdown = df.to_markdown(
+                index=False,
+                tablefmt="pipe",
+            )
+        else:
+            raise TypeError(
+                "Content list should be a list of lists or list of dict"
+            )
+
+    else:
+        raise TypeError(
+            "Content must be a pandas DataFrame, dict or list of "
+            "(lists or dict)"
+        )
+
+    markdown = ""
+
+    if header:
+        markdown += f"# {header}\n\n"
+
+        if header_separator:
+            markdown += "---\n\n<br>\n\n"
+
+    markdown += table_markdown
+
+    if footer:
+        quoted_note = "\n".join(
+            f"> {line}" if line else ">"
+            for line in footer.splitlines()
+        )
+
+        markdown += f"\n\n<br>\n\n{quoted_note}"
+
+    display(Markdown(markdown))
+
+
+def print_markdown_list(
+    items: Iterable[str],
+    numbered: bool = False,
+    header: str | None = None,
+    header_separator: bool = True,
+    footer: str | None = None,
+) -> None:
+    """
+    Display a formatted Markdown list section.
+
+    The function displays a list of items as either an ordered or unordered
+    Markdown list, with an optional header, separator, and footer.
+
+    Parameters
+    ----------
+    items : Iterable[str]
+        Items to display in the list.
+
+    numbered : bool, default=False
+        Whether to display the items as a numbered list. If ``False``,
+        an unordered list with bullet points is displayed.
+
+    header : str or None, default=None
+        Optional section title displayed above the list.
+        Markdown syntax is supported.
+
+    header_separator : bool, default=True
+        Whether to display a horizontal separator below the header.
+
+    footer : str or None, default=None
+        Optional footer displayed below the list as a Markdown block quote.
+        Markdown syntax is supported. Multi-line notes are supported, with
+        each line rendered as part of the block quote.
+
+    Notes
+    -----
+    The function displays the generated Markdown directly and returns
+    ``None``.
+    """
+    markdown = ""
+
+    if header:
+        markdown += f"# {header}\n\n"
+
+        if header_separator:
+            markdown += "---\n\n"
+
+    if numbered:
+        markdown += "\n".join(
+            f"{index}. {item}"
+            for index, item in enumerate(items, start=1)
+        )
+    else:
+        markdown += "\n".join(
+            f"- {item}"
+            for item in items
+        )
+
+    if footer:
+        quoted_note = "\n".join(
+            f"> {line}" if line else ">"
+            for line in footer.splitlines()
+        )
+
+        markdown += f"\n\n{quoted_note}"
+
+    display(Markdown(markdown))
+
+
+def print_markdown_section(
     content: str,
+    header: str | None = None,
+    header_separator: bool = True,
+    footer: str | None = None,
+) -> None:
+    """
+    Display a formatted Markdown section with an optional header and footer.
+
+    The section consists of an optional title, a horizontal separator,
+    the provided Markdown content, and an optional footer displayed as
+    a Markdown block quote.
+
+    Parameters
+    ----------
+    content : str
+        Markdown content displayed inside the section.
+
+    header : str or None, default=None
+        Optional section title displayed above the separator.
+
+    header_separator : bool, default=True
+        Whether to display a horizontal separator below the header.
+
+    footer : str or None, default=None
+        Optional footer displayed below the mathematical expression as a
+        Markdown block quote. Markdown syntax is supported. Multi-line notes
+        are supported, with each line rendered as part of the block quote.
+
+    Returns
+    -------
+    None
+        The generated Markdown is displayed directly.
+    """
+    markdown = ""
+
+    if header:
+        markdown += f"# {header}\n\n"
+
+    if header_separator:
+        markdown += "---\n\n"
+
+    markdown += content
+
+    if footer:
+        quoted_note = "\n".join(
+            f"> {line}" if line else ">"
+            for line in footer.splitlines()
+        )
+
+        markdown += f"\n\n{quoted_note}"
+
+    display(Markdown(markdown))
+
+# endregion Markdown Functions -------------------------------------------------
+
+# region Console Functions -----------------------------------------------------
+
+def print_console_table(
+    content: pd.DataFrame | dict | list,
+    header: str | None = None,
+    show_table_index: bool = True,
+    footer: str | None = None,
+    separator_length: int = 80,
+    tablefmt: Literal[
+        "simple",
+        "plain",
+        "grid",
+        "fancy_grid",
+        "outline",
+        "simple_outline",
+        "rounded_outline",
+        "heavy_outline",
+        "mixed_outline",
+        "double_outline",
+        "psql",
+        "jira",
+        "presto",
+        "pretty",
+        "rst",
+        "mediawiki",
+        "orgtbl",
+        "double_grid",
+        "mixed_grid",
+    ] = "fancy_grid",
+) -> None:
+    """
+    Display a formatted table in the console using Unicode box-drawing
+    characters.
+
+    Parameters
+    ----------
+    content : pd.DataFrame, dict, or list
+        Tabular content to display.
+
+        - ``pd.DataFrame``: displayed directly.
+        - ``dict`` with list values: each key is treated as a column name.
+        - ``dict`` with scalar values: displayed as key-value pairs.
+        - ``list`` containing lists or dictionaries: converted into a table.
+
+    header : str or None, default=None
+        Optional section header displayed above the table in uppercase.
+        
+
+    show_table_index : bool, default=True
+        Whether to display the DataFrame index.
+
+    footer : str or None, default=None
+        Optional footer displayed below the table.
+
+    separator_length : int, default=80
+        Number of characters used for the separator lines.
+
+    tablefmt : {"simple","plain","grid","fancy_grid","outline","simple_outline",
+    "rounded_outline","heavy_outline","mixed_outline","double_outline","psql",
+    "jira","presto","pretty","rst","mediawiki","orgtbl","double_grid",
+    "mixed_grid"}, default="fancy_grid"
+        Format used to render the table in the console.
+
+    Raises
+    ------
+    TypeError
+        If ``content`` is not a supported type or a list contains elements
+        that cannot be converted into a table.
+
+    Notes
+    -----
+    Empty content is displayed as a message instead of an empty table.
+
+    The table is rendered using the ``fancy_grid`` format from
+    ``tabulate``.
+
+    The function displays the generated table directly and returns
+    ``None``.
+    """
+
+    valid_table_formats = {
+        "simple",
+        "plain",
+        "grid",
+        "fancy_grid",
+        "outline",
+        "simple_outline",
+        "rounded_outline",
+        "heavy_outline",
+        "mixed_outline",
+        "double_outline",
+        "psql",
+        "jira",
+        "presto",
+        "pretty",
+        "rst",
+        "mediawiki",
+        "orgtbl",
+        "double_grid",
+        "mixed_grid",
+    }
+
+    if tablefmt not in valid_table_formats:
+        raise ValueError(
+            f"Invalid table format: {tablefmt!r}. "
+            f"Expected one of: {', '.join(sorted(valid_table_formats))}"
+        )
+
+    separator = "=" * separator_length
+    separator_footer = "_" * separator_length
+
+    if isinstance(content, pd.DataFrame):
+        if content.empty:
+            print("La tabla no tiene ningún elemento")
+            return
+
+        table = tabulate(
+            content, # type: ignore[arg-type] # Se ignora porque si puede trabajar internamente con df
+            headers="keys",
+            tablefmt=tablefmt,
+            showindex=show_table_index,
+        )
+
+    elif isinstance(content, dict):
+        if not content:
+            print("La tabla no tiene ningún elemento")
+            return
+
+        is_dict_of_lists = all(
+            isinstance(value, list)
+            for value in content.values()
+        )
+
+        if is_dict_of_lists:
+            table = tabulate(
+                content,
+                headers="keys",
+                tablefmt=tablefmt,
+                showindex=False,
+            )
+        else:
+            table = tabulate(
+                content.items(),
+                headers=["Key", "Value"],
+                tablefmt=tablefmt,
+                showindex=False,
+            )
+
+    elif isinstance(content, list):
+        if not content:
+            print("La tabla no tiene ningún elemento")
+            return
+
+        if not all(isinstance(item, (list, dict)) for item in content):
+            raise TypeError(
+                "Content list should be a list of lists or list of dict"
+            )
+
+        table = tabulate(
+            content,
+            headers="keys" if isinstance(content[0], dict) else (),
+            tablefmt=tablefmt,
+            showindex=False,
+        )
+
+    else:
+        raise TypeError(
+            "Content must be a pandas DataFrame, dict or list of "
+            "(lists or dict)"
+        )
+
+    if header is not None:
+        print(separator)
+        print(header.upper())
+        print(separator)
+
+    print(table)
+
+    if footer is not None:
+        print(separator_footer)
+        print(footer)
+
+
+def print_console_list(
+    items: Iterable[str],
+    numbered: bool = False,
+    header: str | None = None,
+    footer: str | None = None,
+    separator_length: int = 80
+) -> None:
+    """
+    Display a formatted list section in the console.
+
+    The function displays a list of items as either an ordered or unordered
+    text list, with an optional header and footer.
+
+    Parameters
+    ----------
+    items : Iterable[str]
+        Items to display in the list.
+
+    numbered : bool, default=False
+        Whether to display the items as a numbered list. If ``False``,
+        an unordered list with bullet points is displayed.
+
+    header : str or None, default=None
+        Optional section header displayed above the list in uppercase.
+
+    footer : str or None, default=None
+        Optional footer displayed below the list.
+
+    separator_length : int, default=80
+        Number of characters used for the separator lines.
+
+    Notes
+    -----
+    The function displays the generated list directly and returns
+    ``None``.
+    """
+    if numbered:
+        content = "\n".join(
+            f"{index}. {item}"
+            for index, item in enumerate(items, start=1)
+        )
+    else:
+        content = "\n".join(
+            f"• {item}"
+            for item in items
+        )
+
+    print_console_section(
+        content=content,
+        header=header,
+        footer=footer,
+        separator_length=separator_length
+    )
+        
+
+def print_console_section( 
+    content: str,
+    header: str | None = None,
+    footer: str | None = None,
     separator_length: int = 80
 ) -> None:
     """
     Display a formatted section in the console using plain text.
 
     The section consists of a title surrounded by separator lines,
-    followed by the provided content.
+    followed by the provided content and an optional footer.
 
     Parameters
     ----------
-    title : str
-        Section title displayed in uppercase.
-
     content : str
         Text or results to display below the title.
+
+    header : str or None, default=None
+        Optional section header displayed above the table in uppercase.
+
+    footer : str or None, default=None
+        Optional text displayed below the content and a separator line.
 
     separator_length : int, default=80
         Number of characters used for the separator lines.
     """
 
     separator = "=" * separator_length
-    print(separator)
-    print(str(title).upper())
-    print(separator)
+    separator_footer = "_" * separator_length
+
+
+    if header is not None:
+        print(separator)
+        print(header.upper())
+        print(separator)
+
     print(content)
 
+    if footer is not None:
+        print(separator_footer)
+        print(footer)
+
+# endregion Console Functions --------------------------------------------------
+
+# region Math Functions --------------------------------------------------------
+
+def print_math_section(
+    content: str,
+    header: str | None = None,
+    header_separator: bool = True,
+    footer: str | None = None,
+) -> None:
+    """
+    Display a mathematical expression with an optional Markdown header and footer.
+
+    Parameters
+    ----------
+    content : str
+        LaTeX expression to display.
+
+    header : str or None, default=None
+        Optional title displayed above the mathematical expression.
+        Markdown syntax is supported.
+
+    header_separator : bool, default=True
+        Whether to display a horizontal separator below the header.
+
+    footer : str or None, default=None
+        Optional footer displayed below the mathematical expression as a
+        Markdown block quote. Markdown syntax is supported. Multi-line notes
+        are supported, with each line rendered as part of the block quote.
+
+    Examples
+    --------
+    >>> print_math_section(r"x^2 + 2x + 1 = 0")
+
+    >>> print_math_section(
+    ...     r"\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}",
+    ...     title="Quadratic Formula"
+    ...     note="This is the general solution for a quadratic equation."
+    ... )
+    """
+    if header is not None:
+        markdown = f"# {header}\n\n"
+
+        if header_separator:
+            markdown += "---\n\n"
+
+        display(Markdown(markdown))
+
+    display(Math(content))
+
+    if footer:
+        quoted_note = "\n".join(
+            f"> {line}" if line else ">"
+            for line in footer.splitlines()
+        )
+
+        display(Markdown(quoted_note))
+
+# endregion Math Functions -----------------------------------------------------
 
 def preview_dataframe(
-    title: str, 
     df: pd.DataFrame, 
-    rows: int = 5,
+    header: str | None = None, 
     header_color: Color = DEFAULT_COLOR,
     header_align: Alignment = Alignment.LEFT,
+    rows: int = 5,
 ) -> None:
     """
     Display a styled preview of a DataFrame with a formatted title.
 
+    The DataFrame is rendered using pandas ``Styler`` to preserve the
+    notebook's rich HTML representation. An optional header can be added
+    above the preview.
+
     Parameters
     ----------
-    title : str
-        Title displayed above the DataFrame.
-
     df : pd.DataFrame
         DataFrame to preview.
 
-    rows : int, default=5
-        Number of rows to display.
+    header : str or None, default=None
+        Optional title displayed above the DataFrame.
 
     header_color : Color, default=Color.BLACK
         Color used for the title and bottom border.
 
     header_align : Alignment, default=Alignment.LEFT
         Horizontal alignment of the title.
+
+    rows : int, default=5
+        Number of rows to display.
+
+    Notes
+    -----
+    Only the first ``rows`` rows of the DataFrame are displayed. The
+    resulting table is rendered using pandas ``Styler`` and is intended
+    for interactive inspection in Jupyter notebooks.
     """
 
     # --- LOCAL VISUAL CONFIGURATION ---
     header_font_size = "24px"
 
-    caption_style = (
-        f"<h2 style='text-align:{header_align.value}; color:{header_color.value}; font-size:{header_font_size}; "
-        f"border-bottom: 2px solid {header_color.value}; padding-bottom: 5px;'>"
-        f"{title}</h2>"
-    )
+    styled_df = df.head(rows).style
 
-    styled_df = df.head(rows).style.set_caption(caption_style) # Necesario para generar/renderizar HTML en pandas
+    if header is not None:
+        caption_style = (
+            f"<h2 style='text-align:{header_align.value}; color:{header_color.value}; font-size:{header_font_size}; "
+            f"border-bottom: 2px solid {header_color.value}; padding-bottom: 5px;'>"
+            f"{header}</h2>"
+        )
+
+        styled_df = styled_df.set_caption(caption_style) # Necesario para generar/renderizar HTML en pandas
+
+
     display(styled_df)
 
 
@@ -601,19 +1233,19 @@ def show_df_details(
         except ValueError as exc:
             raise ValueError(f"Invalid freq '{freq_missing}'") from exc
     
-        n_missing, _ = features_utilities.count_missing_timestamps(df, col_time, freq=freq_missing, realign=False)
+        n_missing, _ = preprocessing_utilities.count_missing_timestamps(df, col_time, freq=freq_missing, realign=False)
 
         content += f"\n- Total Filas con frecuencia de {freq_missing} que faltan: {n_missing}"
 
-    print_section(
-        "Resumen de dataframe".upper(),
-        content
+    print_html_section(
+        content=content,
+        header="Resumen de dataframe".upper(),
     )
 
 
     if full_info:
 
-        df_columns_summary = features_utilities.get_columns_summary(
+        df_columns_summary = preprocessing_utilities.get_columns_summary(
             df,
             sort_by=[
                 "num_valores_no_validos",
@@ -625,9 +1257,9 @@ def show_df_details(
             ],
         )
 
-        print_table_section(
-            "Resumen de Columnas".upper(),
-            df_columns_summary,
+        print_html_table(
+            content=df_columns_summary,
+            header="Resumen de Columnas".upper(),
         )
 
 
@@ -636,21 +1268,25 @@ def show_df_details(
             gap_duration_str = format_time_gap(freq_missing, missing_gap_limit)
 
             # Ver gaps que hay
-            df_gaps = features_utilities.find_large_gaps(df, col_time, freq=freq_missing, limit=missing_gap_limit) # 30 min
-            print_table_section(
-                f"Gaps mayores a {gap_duration_str}".upper(), 
-                df_gaps, 
+            df_gaps = preprocessing_utilities.find_large_gaps(df, col_time, freq=freq_missing, limit=missing_gap_limit) # 30 min
+            print_html_table( 
+                content=df_gaps,
+                header=f"Gaps mayores a {gap_duration_str}".upper(),
                 show_table_index=False
             )
 
     if resume_info:
 
-        print_table_section(
-            "Descripción del dataframe".upper(), 
-            df.describe(percentiles=[0.001, 0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99, 0.999])
+        print_html_table( 
+            content=df.describe(percentiles=[0.001, 0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99, 0.999]),
+            header="Descripción del dataframe".upper()
         )
 
-        print_console_section("Resumen Raw del dataframe".upper(), "")
+        print_console_section(
+            content="",
+            header="Resumen Raw del dataframe".upper(),
+            separator_length=60
+        )
         
         print(df.info())
 
@@ -693,7 +1329,10 @@ Cambios entre original y modificado:
 - Columnas eliminadas ({len(removed_columns)}): {removed_columns if removed_columns else "Ninguna"}
 """
 
-    print_section("Diferencias entre dataframes".upper(), content)
+    print_html_section(
+        content=content,
+        header="Diferencias entre dataframes".upper(),
+    )
 
 
 
@@ -752,74 +1391,10 @@ Total de registros analizados: {len(df)}
 Total de registros con ruido encontrados: {total_noise}
 """
 
-    print_section(
-        "Resultados de ruido analizados".upper(),
-        content,
+    print_html_section(
+        content=content,
+        header="Resultados de ruido analizados".upper(),
     )
-
-
-# TODO deprecated
-# def show_noise_summary_old(
-#     df: pd.DataFrame,
-#     tolerances: dict[str, float],
-#     noise_suffix: str = "_is_noise",
-#     global_noise_column: str = "any_sensor_noise",
-# ) -> None:
-#     """
-#     Display a summary of sensor statistics and detected noise.
-
-#     Parameters
-#     ----------
-#     df : pandas.DataFrame
-#         DataFrame containing the sensor data and noise flags.
-#     tolerances : dict[str, float]
-#         Mapping of sensor names to their corresponding noise thresholds.
-#     noise_suffix : str, default="_is_noise"
-#         Suffix used to identify each sensor's noise flag column.
-#     global_noise_column : str, default="any_sensor_noise"
-#         Name of the column indicating whether any sensor is marked as noise.
-#     """
-
-#     sections = []
-#     num_added_sensor = 0
-
-#     for sensor, threshold in tolerances.items():
-#         noise_col = f"{sensor}{noise_suffix}"
-
-#         if sensor not in df.columns or noise_col not in df.columns:
-#             continue
-
-#         num_added_sensor += 1
-
-#         sections.append(
-#             f'''- {sensor}
-#     Media: {df[sensor].mean():.2f}
-#     Mediana: {df[sensor].median():.2f}
-#     Mínimo: {df[sensor].min():.2f}
-#     Máximo: {df[sensor].max():.2f}
-#     Umbral: > {threshold}
-#     Picos detectados: {df[noise_col].sum()}
-# '''
-#         )
-
-#     total_noise = (
-#         df[global_noise_column].sum()
-#         if global_noise_column in df.columns
-#         else "N/A"
-#     )
-
-#     content = f'''SENSORES ANALIZADOS:
-# {''.join(sections)}
-# RESUMEN:
-# Total de sensores analizados: {num_added_sensor}
-# Total de registros analizados: {len(df)}
-# Total de registros con ruido encontrados: {total_noise}
-# '''
-
-#     print_section(
-#         "Resultados de ruido analizados".upper(),
-#         content,
-#     )
 
 
 # endregion Preview Functions --------------------------------------------------
