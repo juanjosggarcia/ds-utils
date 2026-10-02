@@ -219,7 +219,7 @@ def prepare_dataframe_for_ml(
 
 
 def regression_metrics(
-    y_real: ArrayLike,
+    y_true: ArrayLike,
     y_pred: ArrayLike,
     decimals: int = 2
 ) -> dict[str, float]:
@@ -237,7 +237,7 @@ def regression_metrics(
 
     Parameters
     ----------
-    y_real : ArrayLike
+    y_true : ArrayLike
         Observed real values.
 
     y_pred : ArrayLike
@@ -255,9 +255,9 @@ def regression_metrics(
     Raises
     ------
     ValueError
-        If `y_real` and `y_pred` have different lengths.
+        If `y_true` and `y_pred` have different lengths.
 
-        If `y_real` is constant, since R² is undefined in that case.
+        If `y_true` is constant, since R² is undefined in that case.
 
     Notes
     -----
@@ -265,26 +265,26 @@ def regression_metrics(
     calculations retain the full available numerical precision.
     """
 
-    y_real = np.asarray(y_real).ravel()
+    y_true = np.asarray(y_true).ravel()
     y_pred = np.asarray(y_pred).ravel()
 
-    if len(y_real) != len(y_pred):
+    if len(y_true) != len(y_pred):
         raise ValueError(
-            "y_real and y_pred must have the same length."
+            "y_true and y_pred must have the same length."
         )
 
-    errors = y_real - y_pred
+    errors = y_true - y_pred
 
     mae = np.mean(np.abs(errors))
     mse = np.mean(errors ** 2)
     rmse = np.sqrt(mse)
 
     ss_res = np.sum(errors ** 2)
-    ss_tot = np.sum((y_real - np.mean(y_real)) ** 2)
+    ss_tot = np.sum((y_true - np.mean(y_true)) ** 2)
 
     if ss_tot == 0:
         raise ValueError(
-            "R² is undefined when y_real is constant."
+            "R² is undefined when y_true is constant."
         )
 
     r2 = 1 - (ss_res / ss_tot)

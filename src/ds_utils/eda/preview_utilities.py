@@ -1039,41 +1039,310 @@ def print_console_section(
 
 # region Math Functions --------------------------------------------------------
 
-def print_math_section(
-    content: str,
+def print_math_list_expressions(
+    items: Iterable[str],
     header: str | None = None,
-    header_separator: bool = True,
     footer: str | None = None,
+    header_size: Literal[
+        "tiny",
+        "small",
+        "normalsize",
+        "large",
+        "Large",
+        "LARGE",
+        "huge",
+        "Huge",
+    ] = "huge",
 ) -> None:
     """
-    Display a mathematical expression with an optional Markdown header and footer.
+    Display multiple mathematical expressions as a single formatted
+    LaTeX block.
+
+    Each item is treated as a single mathematical expression and
+    displayed on a separate line inside an ``aligned`` environment.
+    Expressions automatically use ``\\displaystyle`` so that fractions,
+    sums, integrals, and other display-style constructs retain their
+    full mathematical size.
+
+    An optional header is displayed above the expressions using the
+    requested LaTeX font size, while an optional footer is displayed
+    below them in italic style. The complete section is rendered as a
+    single :class:`IPython.display.Math` output.
+
+    Parameters
+    ----------
+    items : Iterable[str]
+        Mathematical expressions written in LaTeX. Each expression is
+        displayed on a separate line.
+
+    header : str or None, default=None
+        Optional title displayed above the mathematical expressions.
+
+    footer : str or None, default=None
+        Optional explanatory text displayed below the expressions in
+        italic style.
+
+    header_size : Literal[...], default="huge"
+        LaTeX font size used for the header. Available sizes are
+        ``"tiny"``, ``"small"``, ``"normalsize"``, ``"large"``,
+        ``"Large"``, ``"LARGE"``, ``"huge"``, and ``"Huge"``.
+
+    Notes
+    -----
+    The expressions are wrapped in a LaTeX ``aligned`` environment.
+    The ``&`` character can be used to define a common alignment point
+    between rows.
+
+    The expressions are inserted directly into the generated LaTeX;
+    no escaping or validation is performed.
+
+    Examples
+    --------
+    Align several expressions at the equality operator:
+
+        >>> print_math_list(
+        ...     [
+        ...         r"x^2 + 2x + 1 &= 0",
+        ...         r"x^2 + 2x &= -1",
+        ...         r"x &= -1",
+        ...     ],
+        ...     header="Solving the equation",
+        ... )
+    """
+
+    valid_header_sizes = {"tiny","small","normalsize","large","Large","LARGE",
+        "huge","Huge",}
+
+    if header_size not in valid_header_sizes:
+        raise ValueError(
+            f"Invalid header_size: {header_size!r}. "
+            f"Expected one of: {', '.join(sorted(valid_header_sizes))}."
+        )
+
+    expressions = list(items)
+
+    content = "\n".join(
+        rf"\displaystyle {expression} \\"
+        for expression in expressions
+    )
+
+    lines: list[str] = [r"\begin{array}{l}"]
+
+    if header is not None:
+        lines.extend(
+            [
+                rf"\{header_size} \text{{{header}}}",
+                r"\\[1.5em]",
+            ]
+        )
+
+    lines.extend(
+        [
+            r"\begin{aligned}",
+            content,
+            r"\end{aligned}",
+        ]
+    )
+
+    if footer is not None:
+        lines.extend(
+            [
+                r"\\[1.5em]",
+                rf"\text{{\it {footer}}}",
+            ]
+        )
+
+    lines.append(r"\end{array}")
+
+    display(Math("\n".join(lines)))
+
+
+def print_math_expression(
+    content: str,
+    header: str | None = None,
+    footer: str | None = None,
+    header_size: Literal[
+        "tiny",
+        "small",
+        "normalsize",
+        "large",
+        "Large",
+        "LARGE",
+        "huge",
+        "Huge",
+    ] = "huge",
+) -> None:
+    """
+    Display a single mathematical expression as a formatted LaTeX block.
+
+    The expression is rendered inside a ``gathered`` environment and
+    automatically uses ``\\displaystyle`` so that fractions, sums,
+    integrals, and other display-style constructs retain their full
+    mathematical size.
+
+    An optional header is displayed above the expression using the
+    requested LaTeX font size, while an optional footer is displayed
+    below the expression in italic text. The complete section is
+    rendered as a single :class:`IPython.display.Math` output.
+
+    This function is intended for displaying a single mathematical
+    expression with a consistent presentation layout. For multiple
+    expressions or fully custom LaTeX layouts, use the corresponding
+    specialized functions instead.
 
     Parameters
     ----------
     content : str
-        LaTeX expression to display.
+        Mathematical expression written in LaTeX. The expression is
+        inserted directly into the generated ``gathered`` environment;
+        no escaping or validation is performed.
 
     header : str or None, default=None
         Optional title displayed above the mathematical expression.
-        Markdown syntax is supported.
-
-    header_separator : bool, default=True
-        Whether to display a horizontal separator below the header.
 
     footer : str or None, default=None
-        Optional footer displayed below the mathematical expression as a
-        Markdown block quote. Markdown syntax is supported. Multi-line notes
-        are supported, with each line rendered as part of the block quote.
+        Optional explanatory text displayed below the expression in italic style.
+
+    header_size : Literal[...], default="huge"
+        LaTeX font size used for the header. Available sizes are
+        ``"tiny"``, ``"small"``, ``"normalsize"``, ``"large"``,
+        ``"Large"``, ``"LARGE"``, ``"huge"``, and ``"Huge"``.
+
+    Notes
+    -----
+    The header and footer are treated as plain text within LaTeX
+    ``\\text{...}`` commands. They should therefore not contain
+    unescaped LaTeX commands or characters with special meaning in
+    LaTeX.
+
+    The function produces one ``Math`` display containing the header,
+    expression, and footer rather than separate notebook outputs.
+
 
     Examples
     --------
-    >>> print_math_section(r"x^2 + 2x + 1 = 0")
+    Display a simple mathematical expression:
 
-    >>> print_math_section(
-    ...     r"\frac{-b \pm \sqrt{b^2 - 4ac}}{2a}",
-    ...     title="Quadratic Formula"
-    ...     note="This is the general solution for a quadratic equation."
-    ... )
+        >>> print_math_expression(
+        ...     r"x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}",
+        ...     header="Quadratic formula",
+        ...     footer="The formula gives the solutions of the quadratic equation.",
+        ... )
+    """
+
+    valid_header_sizes = {"tiny","small","normalsize","large","Large","LARGE",
+        "huge","Huge",}
+
+    if header_size not in valid_header_sizes:
+        raise ValueError(
+            f"Invalid header_size: {header_size!r}. "
+            f"Expected one of: {', '.join(sorted(valid_header_sizes))}."
+        )
+
+    lines: list[str] = [r"\begin{array}{l}"]
+
+    if header is not None:
+        lines.extend(
+            [
+                rf"\{header_size} \text{{{header}}}",
+                r"\\[1.5em]",
+            ]
+        )
+
+    lines.extend(
+        [
+            r"\begin{gathered}",
+            rf"\displaystyle {content}",
+            r"\end{gathered}",
+        ]
+    )
+
+    if footer is not None:
+        lines.extend(
+            [
+                r"\\[1.5em]",
+                rf"\text{{\it {footer}}}",
+            ]
+        )
+
+    lines.append(r"\end{array}")
+
+    display(Math("\n".join(lines)))
+
+
+def print_math_section(
+    content: str,
+    header: str | None = None,
+    header_separator: bool = False,
+    footer: str | None = None,
+) -> None:
+    """
+    Display raw LaTeX content with optional Markdown header and footer.
+
+    This function provides full control over the mathematical content.
+    The value of ``content`` is passed directly to
+    :class:`IPython.display.Math` without any escaping, validation, or
+    automatic formatting. This allows arbitrary LaTeX structures and
+    environments such as ``aligned``, ``gathered``, ``array``, ``cases``,
+    and custom combinations of them.
+
+    Unlike :func:`print_math_expression` and :func:`print_math_list`, this
+    function does not apply any automatic mathematical layout or font
+    sizing to ``content``. It is intended for cases where the caller
+    needs direct control over the generated LaTeX.
+
+    Parameters
+    ----------
+    content : str
+        Raw LaTeX content to display. The content is passed directly to
+        :class:`IPython.display.Math` and may contain any valid LaTeX
+        expression or environment supported by the rendering backend.
+
+    header : str or None, default=None
+        Optional title displayed above the mathematical content as a
+        Markdown heading. Markdown syntax is supported.
+
+    header_separator : bool, default=False
+        Whether to display a horizontal Markdown separator below the
+        header.
+
+    footer : str or None, default=None
+        Optional footer displayed below the mathematical content as a
+        Markdown block quote. Markdown syntax is supported. Multi-line
+        footers are supported, with each line rendered as part of the
+        block quote.
+
+    Notes
+    -----
+    No escaping or validation is performed on ``content``. The caller is
+    responsible for providing valid LaTeX supported by the rendering
+    backend.
+
+    The header, mathematical content, and footer are displayed as
+    separate notebook outputs. Unlike the formatted mathematical
+    helpers, this function intentionally does not combine them into a
+    single ``Math`` block.
+
+    Examples
+    --------
+    Display a simple mathematical expression:
+
+        >>> print_math_raw(r"x^2 + 2x + 1 = 0")
+
+    Use a custom LaTeX environment:
+
+        >>> print_math_raw(
+        ...     r'''
+        ...     \\begin{aligned}
+        ...     x^2 + 2x + 1 &= 0 \\
+        ...     x^2 + 2x &= -1 \\
+        ...     x &= -1
+        ...     \\end{aligned}
+        ...     ''',
+        ...     header="Solving the equation",
+        ...     header_separator=True,
+        ...     footer="Each step is aligned at the equality operator.",
+        ... )
     """
     if header is not None:
         markdown = f"# {header}\n\n"
