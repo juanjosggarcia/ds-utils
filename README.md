@@ -118,7 +118,13 @@ Disponible a través de `ds_utils.ml.ml_utilities`:
 ---
 
 ### Contratos de datos (`ds_utils.base_classes`)
-* `DatasetContract`: clase base abstracta (`ABC`) para formalizar contratos de datasets, definición de esquemas de columnas requeridas, particiones temporales y validaciones estructurales de datos.
+
+* **Definición y aplicación de contratos** (`ds_utils.base_classes.dataset_contract`):
+  * `DatasetContract`: clase base abstracta para definir contratos de datos, establecer las columnas requeridas y centralizar la validación estructural y la normalización de DataFrames mediante `apply()`.
+
+* **Utilidades para la creación de contratos** (`ds_utils.base_classes.contract_utilities`):
+  * `generate_contract_columns`: generación automática de definiciones de constantes de columna (`COL_<NOMBRE>`, `COL_INDEX`) y grupos de columnas (`DATA_COLUMNS`, `REQUIRED_COLUMNS`, `USED_COLUMNS`) a partir de un DataFrame, siguiendo las convenciones de `CONTRACT_CONFIG`. El código generado está preparado para incorporarse a una subclase de `DatasetContract`.
+  * `create_contract_from_dataframe`: creación dinámica de una subclase de `DatasetContract` a partir de un DataFrame, infiriendo las columnas requeridas y generando las constantes correspondientes. Orientada al prototipado rápido y la validación exploratoria inicial.
 
 ---
 
@@ -287,6 +293,8 @@ El directorio [`notebook_samples/`](notebook_samples/) del repositorio incluye n
 
 ```text
 notebook_samples/
+├── base_classes/
+│   └── contract_utilities_demo.ipynb
 ├── eda/
 │   ├── math_utilities_demo.ipynb
 │   ├── plot_utilities_demo.ipynb

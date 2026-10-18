@@ -1471,19 +1471,13 @@ def show_df_details(
     The preprocessing utilities are imported lazily in this function.
     """
 
-    from ds_utils.preprocessing.preprocessing_utilities import (
-        count_cells_with_missing, 
-        count_rows_with_missing,
-        count_constant_columns
-    )
+    # Tipos no validos: None, NaN, NaT, "", " "
+    n_invalid_cells = preprocessing_utilities.count_cells_with_missing(df)
 
     # Tipos no validos: None, NaN, NaT, "", " "
-    n_invalid_cells = count_cells_with_missing(df)
+    n_invalid_rows = preprocessing_utilities.count_rows_with_missing(df)
 
-    # Tipos no validos: None, NaN, NaT, "", " "
-    n_invalid_rows = count_rows_with_missing(df)
-
-    n_constans_col = count_constant_columns(df)
+    n_constans_col = preprocessing_utilities.count_constant_columns(df)
 
 
     # Se muestran el numero de filas totales y el numero de filas con valores invalidos en ellas
@@ -1557,7 +1551,7 @@ def show_df_details(
             separator_length=60
         )
         
-        print(df.info())
+        df.info()
 
 
 
