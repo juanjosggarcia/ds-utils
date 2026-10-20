@@ -79,10 +79,13 @@ Disponible a través de la fachada pública `ds_utils.preprocessing.preprocessin
 
 * **Previsualización y tablas HTML (`ds_utils.eda.preview_utilities`)**:
   * `preview_dataframe`: renderizado interactivo y estilizado de DataFrames en entornos Jupyter.
-  * `show_df_details`: informe diagnóstico completo (dimensiones, tipos, celdas nulas, columnas constantes y duplicados).
+  * `show_df_details`: informe diagnóstico general del DataFrame (dimensiones, valores no válidos, columnas constantes y, opcionalmente, resumen por columnas y estadísticas descriptivas).
+  * `show_time_series_df_details`: informe diagnóstico de series temporales, incluyendo el resumen general del DataFrame, la detección de timestamps faltantes según una frecuencia especificada y la identificación de gaps temporales grandes.
   * `show_df_differences`: análisis de discrepancias entre dos versiones de un DataFrame (filas añadidas/eliminadas, columnas y diferencias celda a celda).
   * `show_noise_summary`: desglose tabular de niveles de ruido y correcciones por sensor.
   * Utilidades de formateo: `print_html_table`, `print_html_list`, `print_html_dict`, `print_html_section`, `print_markdown_table`, `print_markdown_list`, `print_markdown_section`, `print_console_table`, `print_console_list`, `print_console_section`, `print_math_list_expression`, `print_math_expression`, `print_math_section` y `format_time_gap`.
+  * `get_class_attributes`: obtiene los atributos de una clase y, opcionalmente, los atributos de instancia, devolviéndolos como una cadena de texto formateada.
+  * `get_class_attributes_dict`: obtiene los atributos de una clase y los devuelve en un diccionario estructurado para su procesamiento y reutilización.
 
 * **Utilidades matemáticas y LaTeX (`ds_utils.eda.math_utilities`)**:
   * `matrix_to_latex`: conversión de arreglos NumPy y vectores 1D a matrices LaTeX (`pmatrix`) con redondeo configurable y eliminación de ceros no significativos.
@@ -120,10 +123,10 @@ Disponible a través de `ds_utils.ml.ml_utilities`:
 ### Contratos de datos (`ds_utils.base_classes`)
 
 * **Definición y aplicación de contratos** (`ds_utils.base_classes.dataset_contract`):
-  * `DatasetContract`: clase base abstracta para definir contratos de datos, establecer las columnas requeridas y centralizar la validación estructural y la normalización de DataFrames mediante `apply()`.
+  * `DatasetContract`: clase base abstracta para definir contratos de datos, establecer las columnas requeridas y centralizar la validación estructural y la normalización de DataFrames mediante `apply()`. Permite añadir atributos dinámicamente al contrato mediante `add_attribute()`, sin modificar automáticamente los grupos de columnas existentes.
 
 * **Utilidades para la creación de contratos** (`ds_utils.base_classes.contract_utilities`):
-  * `generate_contract_columns`: generación automática de definiciones de constantes de columna (`COL_<NOMBRE>`, `COL_INDEX`) y grupos de columnas (`DATA_COLUMNS`, `REQUIRED_COLUMNS`, `USED_COLUMNS`) a partir de un DataFrame, siguiendo las convenciones de `CONTRACT_CONFIG`. El código generado está preparado para incorporarse a una subclase de `DatasetContract`.
+  * `generate_contract_definition`: generación automática de definiciones de constantes de columna (`COL_<NOMBRE>`, `COL_INDEX`) y grupos de columnas (`DATA_COLUMNS`, `REQUIRED_COLUMNS`, `USED_COLUMNS`) a partir de un DataFrame, siguiendo las convenciones de `CONTRACT_CONFIG`. El código generado está preparado para incorporarse a una subclase de `DatasetContract`.
   * `create_contract_from_dataframe`: creación dinámica de una subclase de `DatasetContract` a partir de un DataFrame, infiriendo las columnas requeridas y generando las constantes correspondientes. Orientada al prototipado rápido y la validación exploratoria inicial.
 
 ---

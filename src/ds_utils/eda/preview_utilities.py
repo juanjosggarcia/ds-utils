@@ -102,6 +102,106 @@ def format_time_gap(freq: str, periods: int) -> str:
 
     return f"{value} {unit}"
 
+def get_class_attributes_dict(
+    obj: object,
+    include_instance_attributes: bool = True,
+) -> dict:
+    """
+    Return the attributes defined directly in a class and, optionally,
+    the instance attributes of an object.
+
+    Special Python attributes and internal ABC implementation details
+    are excluded.
+
+    Parameters
+    ----------
+    obj : object
+        Class or instance to inspect.
+    include_instance_attributes : bool, default=True
+        Whether to include instance attributes when `obj` is an instance.
+        Has no effect when `obj` is a class.
+
+    Returns
+    -------
+    dict
+        Dictionary containing class attributes and, optionally,
+        instance attributes.
+    """
+    cls = obj if isinstance(obj, type) else type(obj)
+
+    excluded_attributes = {"_abc_impl"}
+
+    class_attributes = {
+        name: value
+        for name, value in vars(cls).items()
+        if not (name.startswith("__") and name.endswith("__"))
+        and name not in excluded_attributes
+        and not callable(value)
+    }
+
+    attributes = {
+        "class": cls.__name__,
+        "class_attributes": class_attributes,
+    }
+
+    if include_instance_attributes and not isinstance(obj, type):
+        attributes["instance_attributes"] = vars(obj).copy()
+
+    return attributes
+
+def get_class_attributes(
+    obj: object,
+    include_instance_attributes: bool = True,
+) -> str:
+    """
+    Return a formatted string with the attributes defined directly
+    in a class and, optionally, the instance attributes.
+
+    Parameters
+    ----------
+    obj : object
+        Class or instance to inspect.
+    include_instance_attributes : bool, default=True
+        Whether to include instance attributes when `obj` is an instance.
+
+    Returns
+    -------
+    str
+        Formatted string containing the selected attributes.
+    """
+
+    separator = "-" * 80
+
+    cls = obj if isinstance(obj, type) else type(obj)
+
+    excluded_attributes = {"_abc_impl"}
+
+    class_attributes = {
+        name: value
+        for name, value in vars(cls).items()
+        if not (name.startswith("__") and name.endswith("__"))
+        and name not in excluded_attributes
+        and not callable(value)
+    }
+
+    sections = [f"Class: {cls.__name__}", separator, "Class attributes:"]
+
+    sections.extend(
+        f"- {name}: {value!r}"
+        for name, value in class_attributes.items()
+    )
+
+    if include_instance_attributes and not isinstance(obj, type):
+        instance_attributes = vars(obj)
+
+        sections.append("Instance attributes:")
+        sections.extend(
+            f"- {name}: {value!r}"
+            for name, value in instance_attributes.items()
+        )
+
+    return "\n".join(sections)
+
 # endregion Aux Functions ------------------------------------------------------
 
 # region Preview Functions -----------------------------------------------------
@@ -1364,6 +1464,8 @@ def print_math_section(
 
 # endregion Math Functions -----------------------------------------------------
 
+# region Dataframe Functions ---------------------------------------------------
+
 def preview_dataframe(
     df: pd.DataFrame, 
     header: str | None = None, 
@@ -1420,62 +1522,54 @@ def preview_dataframe(
     display(styled_df)
 
 
+
 def show_df_details(
-    df: pd.DataFrame, 
-    col_time: str, 
-    full_info: bool = False, 
-    resume_info: bool = False, 
-    freq_missing: None | str = None, 
-    missing_gap_limit: None | int =None
+    df: pd.DataFrame,
+    show_column_summary: bool = False,
+    show_descriptive_stats: bool = False,
+    include_empty_strings: bool = True,
 ) -> None:
     """
-    Display a summary of a DataFrame with optional detailed information.
-
-    The summary includes the number of invalid cells, invalid rows, and
-    constant columns. Optional timestamp analysis can report missing
-    periods and large gaps, while additional descriptive information can
-    be displayed when requested.
+    Display a general summary of a DataFrame and optionally show
+    column-level details and descriptive statistics.
 
     Parameters
     ----------
     df : pd.DataFrame
-        DataFrame to analyze.
+        Input DataFrame.
 
-    col_time : str
-        Name of the timestamp column used for missing-period and gap analysis.
+    show_column_summary : bool, default=False
+        Whether to display a summary of each column, including its data
+        type, number of distinct values, number of missing values, and
+        percentage of missing values.
 
-    full_info : bool, default=False
-        Whether to display the column summary. If ``freq_missing`` and
-        ``missing_gap_limit`` are provided, large timestamp gaps are also
-        displayed.
+    show_descriptive_stats : bool, default=False
+        Whether to display descriptive statistics using ``df.describe()``.
 
-    resume_info : bool, default=False
-        Whether to display descriptive statistics and raw DataFrame
-        information.
+    include_empty_strings : bool, default=True
+        Whether empty or whitespace-only strings in ``object`` or
+        ``string`` columns are considered missing when calculating
+        missing-value counts.
 
-    freq_missing : str, optional
-        Pandas offset alias used to detect missing timestamps, such as
-        ``"30s"``, ``"5min"``, ``"1h"``, or ``"1D"``.
-
-    missing_gap_limit : int, optional
-        Minimum number of consecutive missing periods required for a gap
-        to be reported.
-
-    Raises
-    ------
-    ValueError
-        If ``freq_missing`` is not a valid pandas offset alias.
-
-    Notes
-    -----
-    The preprocessing utilities are imported lazily in this function.
+    Returns
+    -------
+    None
+        Displays the requested DataFrame details.
     """
 
-    # Tipos no validos: None, NaN, NaT, "", " "
-    n_invalid_cells = preprocessing_utilities.count_cells_with_missing(df)
+    # --- General summary ---
 
-    # Tipos no validos: None, NaN, NaT, "", " "
-    n_invalid_rows = preprocessing_utilities.count_rows_with_missing(df)
+    # Tipos no validos: None, NaN, NaT, NA, "", " "
+    n_invalid_cells = preprocessing_utilities.count_cells_with_missing(
+        df,
+        include_empty_strings=include_empty_strings
+    )
+
+    # Tipos no validos: None, NaN, NaT, NA, "", " "
+    n_invalid_rows = preprocessing_utilities.count_rows_with_missing(
+        df,
+        include_empty_strings=include_empty_strings
+    )
 
     n_constans_col = preprocessing_utilities.count_constant_columns(df)
 
@@ -1489,24 +1583,15 @@ def show_df_details(
 - Total de filas con algún valor no válido: {n_invalid_rows}
 - Total de columnas con valores constantes: {n_constans_col}"""
     
-    if freq_missing:
-        # Validar freq
-        try:
-            to_offset(freq_missing)
-        except ValueError as exc:
-            raise ValueError(f"Invalid freq '{freq_missing}'") from exc
-    
-        n_missing, _ = preprocessing_utilities.count_missing_timestamps(df, col_time, freq=freq_missing, realign=False)
-
-        content += f"\n- Total Filas con frecuencia de {freq_missing} que faltan: {n_missing}"
 
     print_html_section(
         content=content,
         header="Resumen de dataframe".upper(),
     )
 
+    # --- Column summary ---
 
-    if full_info:
+    if show_column_summary:
 
         df_columns_summary = preprocessing_utilities.get_columns_summary(
             df,
@@ -1518,6 +1603,7 @@ def show_df_details(
                 False,
                 True,
             ],
+            include_empty_strings=include_empty_strings
         )
 
         print_html_table(
@@ -1525,34 +1611,180 @@ def show_df_details(
             header="Resumen de Columnas".upper(),
         )
 
+    # --- Descriptive statistics ---
 
-        if freq_missing and missing_gap_limit:
-
-            gap_duration_str = format_time_gap(freq_missing, missing_gap_limit)
-
-            # Ver gaps que hay
-            df_gaps = preprocessing_utilities.find_large_gaps(df, col_time, freq=freq_missing, limit=missing_gap_limit) # 30 min
-            print_html_table( 
-                content=df_gaps,
-                header=f"Gaps mayores a {gap_duration_str}".upper(),
-                show_table_index=False
-            )
-
-    if resume_info:
-
+    if show_descriptive_stats:
         print_html_table( 
             content=df.describe(percentiles=[0.001, 0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99, 0.999]),
-            header="Descripción del dataframe".upper()
+            header="Estadísticas descriptivas del dataframe".upper()
         )
 
-        print_console_section(
-            content="",
-            header="Resumen Raw del dataframe".upper(),
-            separator_length=60
-        )
-        
-        df.info()
 
+
+def show_time_series_df_details(
+    df: pd.DataFrame,
+    col_time: str,
+    freq_missing: str | None = None,
+    missing_gap_limit: int | None = None,
+    show_column_summary: bool = False,
+    show_descriptive_stats: bool = False,
+    include_empty_strings: bool = True,
+) -> None:
+    """
+    Display a summary of a time series DataFrame, including optional
+    missing-timestamp and large-gap analysis.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame.
+
+    col_time : str
+        Name of the timestamp column used for temporal analysis.
+
+    freq_missing : str, optional
+        Pandas offset alias used to detect missing timestamps, such as
+        ``"30s"``, ``"5min"``, ``"1h"``, or ``"1D"``.
+
+    missing_gap_limit : int, optional
+        Minimum number of consecutive missing periods required for a gap
+        to be reported.
+
+    show_column_summary : bool, default=False
+        Whether to display a summary of each column.
+
+    show_descriptive_stats : bool, default=False
+        Whether to display descriptive statistics using ``df.describe()``.
+
+    include_empty_strings : bool, default=True
+        Whether empty or whitespace-only strings in ``object`` or
+        ``string`` columns are considered missing when calculating
+        missing-value counts.
+
+    Returns
+    -------
+    None
+        Displays the requested DataFrame and time series details.
+
+    Raises
+    ------
+    ValueError
+        If ``freq_missing`` is not a valid pandas offset alias.
+    """
+
+    # --- General summary ---
+
+    # Tipos no válidos: None, NaN, NaT, NA, "", " "
+    n_invalid_cells = preprocessing_utilities.count_cells_with_missing(
+        df,
+        include_empty_strings=include_empty_strings,
+    )
+
+    # Tipos no válidos: None, NaN, NaT, NA, "", " "
+    n_invalid_rows = preprocessing_utilities.count_rows_with_missing(
+        df,
+        include_empty_strings=include_empty_strings,
+    )
+
+    n_constans_col = preprocessing_utilities.count_constant_columns(df)
+
+    # --- Temporal summary ---
+
+    content = f"""DataFrame analizado:
+- Celdas: {df.size}
+- Filas: {df.shape[0]}
+- Columnas: {df.shape[1]}
+- Total de celdas con valores no válidos: {n_invalid_cells}
+- Total de filas con algún valor no válido: {n_invalid_rows}
+- Total de columnas con valores constantes: {n_constans_col}"""
+
+    if freq_missing:
+        # Validar frecuencia
+        try:
+            to_offset(freq_missing)
+        except ValueError as exc:
+            raise ValueError(f"Invalid freq '{freq_missing}'") from exc
+
+        n_missing, _ = preprocessing_utilities.count_missing_timestamps(
+            df,
+            col_time,
+            freq=freq_missing,
+            realign=False,
+        )
+
+        content += (
+            f"\n- Total de timestamps ausentes "
+            f"con frecuencia {freq_missing}: {n_missing}"
+        )
+
+    print_html_section(
+        content=content,
+        header="RESUMEN DE SERIE TEMPORAL",
+    )
+
+
+    # --- Column summary ---
+
+    if show_column_summary:
+        df_columns_summary = preprocessing_utilities.get_columns_summary(
+            df,
+            sort_by=[
+                "num_valores_no_validos",
+                "num_valores_distintos",
+            ],
+            ascending=[
+                False,
+                True,
+            ],
+            include_empty_strings=include_empty_strings,
+        )
+
+        print_html_table(
+            content=df_columns_summary,
+            header="RESUMEN DE COLUMNAS",
+        )
+
+
+    # --- Large gaps ---
+
+    if freq_missing and missing_gap_limit is not None:
+        gap_duration_str = format_time_gap(
+            freq_missing,
+            missing_gap_limit,
+        )
+
+        df_gaps = preprocessing_utilities.find_large_gaps(
+            df,
+            col_time,
+            freq=freq_missing,
+            limit=missing_gap_limit,
+        )
+
+        print_html_table(
+            content=df_gaps,
+            header=f"GAPS MAYORES A {gap_duration_str}".upper(),
+            show_table_index=False,
+        )
+
+    # --- Descriptive statistics ---
+
+    if show_descriptive_stats:
+        print_html_table(
+            content=df.describe(
+                percentiles=[
+                    0.001,
+                    0.01,
+                    0.05,
+                    0.25,
+                    0.5,
+                    0.75,
+                    0.95,
+                    0.99,
+                    0.999,
+                ]
+            ),
+            header="ESTADÍSTICAS DESCRIPTIVAS",
+        )
 
 
 def show_df_differences(
@@ -1597,7 +1829,7 @@ Cambios entre original y modificado:
         header="Diferencias entre dataframes".upper(),
     )
 
-
+# endregion Dataframe Functions ------------------------------------------------
 
 def show_noise_summary(
     df: pd.DataFrame,
@@ -1659,6 +1891,10 @@ Total de registros con ruido encontrados: {total_noise}
         header="Resultados de ruido analizados".upper(),
     )
 
+
+# region Others Functions ------------------------------------------------------
+
+# endregion Others Functions ---------------------------------------------------
 
 # endregion Preview Functions --------------------------------------------------
 

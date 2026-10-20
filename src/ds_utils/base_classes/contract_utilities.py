@@ -6,6 +6,15 @@ import pandas as pd
 from ds_utils.base_classes.dataset_contract import DatasetContract
 from ds_utils.base_classes.contract_config import CONTRACT_CONFIG
 
+# region Aux Class -------------------------------------------------------------
+
+# endregion Aux Class ----------------------------------------------------------
+
+# region CONSTANTS -------------------------------------------------------------
+
+# endregion CONSTANTS ----------------------------------------------------------
+
+# region Aux Functions ---------------------------------------------------------
 
 def _get_column_mapping(
     df: pd.DataFrame,
@@ -199,9 +208,13 @@ def _generate_column_groups(
 
     return lines
 
+# endregion Aux Functions ------------------------------------------------------
 
-def generate_contract_columns(
+# region Contract Functions ----------------------------------------------------
+
+def generate_contract_definition(
     df: pd.DataFrame,
+    df_name: str,
     index: str | None = None,
 ) -> None:
     """
@@ -216,6 +229,10 @@ def generate_contract_columns(
     df : pd.DataFrame
         DataFrame whose columns will be used to generate the contract
         constants and column groups.
+
+    df_name : str
+        Logical name of the dataset, ideally matching its DataFrame
+        variable name in the notebook.
 
     index : str or None, default=None
         Optional column to designate as the dataset index. When provided,
@@ -242,6 +259,9 @@ def generate_contract_columns(
     mapping = _get_column_mapping(df, index)
 
     lines = [
+        "# --- Dataset Identification ---",
+        f'{CONTRACT_CONFIG.DF_NAME} = "{df_name}"',
+        "",
         *_generate_base_columns(mapping, index),
         "",
         *_generate_column_groups(mapping, index),
@@ -254,6 +274,7 @@ def generate_contract_columns(
 
 def create_contract_from_dataframe(
     df: pd.DataFrame,
+    df_name: str,
     class_name: str = "DataFrameContract",
     index: str | None = None,
 ) -> DatasetContract:
@@ -268,6 +289,10 @@ def create_contract_from_dataframe(
     ----------
     df : pd.DataFrame
         DataFrame used to infer the contract columns.
+
+    df_name : str
+        Logical name of the dataset, ideally matching its DataFrame
+        variable name in the notebook.
 
     class_name : str, default="DataFrameContract"
         Name of the dynamically generated contract class.
@@ -310,7 +335,8 @@ def create_contract_from_dataframe(
 
     attributes = {
         "__module__": __name__,
-        "REQUIRED_COLUMNS": list(df.columns),
+        f"{CONTRACT_CONFIG.DF_NAME}": df_name,
+        f"{CONTRACT_CONFIG.REQUIRED_COLUMNS}": list(df.columns),
         **mapping,
     }
 
@@ -319,3 +345,13 @@ def create_contract_from_dataframe(
     )
 
     return contract_class()
+
+# region Contract Functions ----------------------------------------------------
+
+# region Others Functions ------------------------------------------------------
+
+# endregion Others Functions ---------------------------------------------------
+
+# region Functions with "lazy import" ------------------------------------------
+
+# endregion Functions with "lazy import" ---------------------------------------

@@ -337,6 +337,7 @@ def get_columns_summary(
         ]
     ) = "num_valores_no_validos",
     ascending: Sequence[bool] | bool = True,
+    include_empty_strings: bool = True,
 ) -> pd.DataFrame:
     """
     Generate a summary of the DataFrame columns.
@@ -359,6 +360,9 @@ def get_columns_summary(
         Whether to sort each corresponding column in ascending order.
         If a sequence is provided, it must have the same length as
         ``sort_by``.
+
+    include_empty_strings : bool, default=True
+        Whether to count empty or whitespace-only strings as missing.
 
     Returns
     -------
@@ -402,7 +406,10 @@ def get_columns_summary(
             f"Allowed values: {valid_sort_columns}."
         )
 
-    invalid_values = count_missing_cells_by_column(df)
+    invalid_values = count_missing_cells_by_column(
+        df,
+        include_empty_strings=include_empty_strings
+    )
 
     df_columns_summary = pd.DataFrame(index=df.columns)
 

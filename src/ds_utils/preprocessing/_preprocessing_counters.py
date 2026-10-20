@@ -249,17 +249,24 @@ def count_constant_columns(
     return int((df.nunique(dropna=dropna) == 1).sum())
 
 
-def count_cells_with_missing(df: pd.DataFrame) -> int:
+def count_cells_with_missing(
+    df: pd.DataFrame,
+    include_empty_strings: bool = True,
+) -> int:
     """
     Count the number of missing cells in a DataFrame.
 
-    Missing cells are detected using pandas missing-value rules an empty or
-    whitespace-only string in an ``object`` or ``string`` column.
+    Missing values are detected using pandas missing-value rules.
+    Optionally, empty or whitespace-only strings in ``object`` or
+    ``string`` columns are also considered missing.
 
     Parameters
     ----------
     df : pd.DataFrame
         Input DataFrame.
+
+    include_empty_strings : bool, default=True
+        Whether to count empty or whitespace-only strings as missing.
 
     Returns
     -------
@@ -280,14 +287,20 @@ def count_cells_with_missing(df: pd.DataFrame) -> int:
     # Total de celdas en todo el Dataframe que pandas considera valores faltantes ("None", "NaN/np.nan", "pd.NaT", "pd.NA")
     missing_values = df.isna().sum().sum()
 
-    # Total de celdas con strings y objects vacíos o en blanco
-    missing_empty_strings = _get_empty_string_mask(df).sum().sum()
+    if include_empty_strings:
+        # Total de celdas con strings y objects vacíos o en blanco
+        missing_empty_strings = _get_empty_string_mask(df).sum().sum()
+
+        missing_values += missing_empty_strings
 
     # Devolvemos el total de celdas
-    return int(missing_values + missing_empty_strings)
+    return int(missing_values)
 
 
-def count_rows_with_missing(df: pd.DataFrame) -> int:
+def count_rows_with_missing(
+    df: pd.DataFrame,
+    include_empty_strings: bool = True,
+) -> int:
     """
     Count the number of rows containing missing values.
 
@@ -299,6 +312,9 @@ def count_rows_with_missing(df: pd.DataFrame) -> int:
     ----------
     df : pd.DataFrame
         Input DataFrame.
+
+    include_empty_strings : bool, default=True
+        Whether empty or whitespace-only strings count as missing.
 
     Returns
     -------
@@ -319,16 +335,20 @@ def count_rows_with_missing(df: pd.DataFrame) -> int:
     # Total de filas que pandas considera valores faltantes ("None", "NaN/np.nan", "pd.NaT", "pd.NA")
     missing_values = df.isna().any(axis=1)
 
-    # Total de filas con strings y objects vacíos o en blanco
-    missing_empty_strings = _get_empty_string_mask(df).any(axis=1)
+    if include_empty_strings:
+        # Total de filas con strings y objects vacíos o en blanco
+        missing_empty_strings = _get_empty_string_mask(df).any(axis=1)
 
-    # Combina ambos
-    total_missing_rows = int((missing_values | missing_empty_strings).sum())
-    
-    return total_missing_rows
+        # Combina ambos
+        missing_values |= missing_empty_strings
+
+    return int(missing_values.sum())
 
 
-def count_columns_with_missing(df: pd.DataFrame) -> int:
+def count_columns_with_missing(
+    df: pd.DataFrame,
+    include_empty_strings: bool = True,
+) -> int:
     """
     Count the number of columns containing missing values.
 
@@ -340,6 +360,9 @@ def count_columns_with_missing(df: pd.DataFrame) -> int:
     ----------
     df : pd.DataFrame
         Input DataFrame.
+
+    include_empty_strings : bool, default=True
+        Whether empty or whitespace-only strings count as missing.
 
     Returns
     -------
@@ -360,15 +383,19 @@ def count_columns_with_missing(df: pd.DataFrame) -> int:
     # Total de columnas que pandas considera valores faltantes ("None", "NaN/np.nan", "pd.NaT", "pd.NA")
     missing_values = df.isna().any(axis=0)
 
-    # Total de columnas con strings y objects vacíos o en blanco
-    missing_empty_strings = _get_empty_string_mask(df).any(axis=0)
+    if include_empty_strings:
+        # Total de columnas con strings y objects vacíos o en blanco
+        missing_empty_strings = _get_empty_string_mask(df).any(axis=0)
 
-    total_missing_columns = int((missing_values | missing_empty_strings).sum())
+        missing_values |= missing_empty_strings
 
-    return total_missing_columns
+    return int(missing_values.sum())
 
 
-def count_missing_cells_by_column(df: pd.DataFrame) -> pd.Series:
+def count_missing_cells_by_column(
+    df: pd.DataFrame,
+    include_empty_strings: bool = True,
+) -> pd.Series:
     """
     Count missing cells for each DataFrame column.
 
@@ -379,6 +406,9 @@ def count_missing_cells_by_column(df: pd.DataFrame) -> pd.Series:
     ----------
     df : pd.DataFrame
         Input DataFrame.
+
+    include_empty_strings : bool, default=True
+        Whether to count empty or whitespace-only strings as missing.
 
     Returns
     -------
@@ -400,14 +430,17 @@ def count_missing_cells_by_column(df: pd.DataFrame) -> pd.Series:
     # Total de celdas por columna que pandas considera valores faltantes ("None", "NaN/np.nan", "pd.NaT", "pd.NA")
     missing_values = df.isna().sum()
 
-    # Total de celdas por columna con strings y objects vacíos o en blanco
-    missing_empty_strings = _get_empty_string_mask(df).sum()
+    if include_empty_strings:
+        # Total de celdas por columna con strings y objects vacíos o en blanco
+        missing_empty_strings = _get_empty_string_mask(df).sum()
 
-    # Add para alinear por nombre de columna y poner cero donde no hay máscara de strings
-    return missing_values.add(
-        missing_empty_strings,
-        fill_value=0,
-    ).astype(int)
+        # Add para alinear por nombre de columna y poner cero donde no hay máscara de strings
+        missing_values = missing_values.add(
+            missing_empty_strings,
+            fill_value=0,
+        )
+
+    return missing_values.astype(int)
 
 
 # endregion Counters Functions -------------------------------------------------

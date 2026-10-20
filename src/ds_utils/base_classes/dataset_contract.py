@@ -30,11 +30,21 @@ class DatasetContract(ABC):
 
     # region Contract Definition -----------------------------------------------
 
+    # --- Dataset Identification ---
+    DF_NAME: ClassVar[str]
+    """Logical name of the dataset, ideally matching its DataFrame variable name in the notebook."""
+
+    # --- Required columns list ---
     REQUIRED_COLUMNS: ClassVar[list[str]]
     """Columns required by the contract. Override in derived contracts."""
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
+
+        if "DF_NAME" not in cls.__dict__:
+            raise TypeError(
+                f"{cls.__name__} must define DF_NAME"
+            )
 
         if "REQUIRED_COLUMNS" not in cls.__dict__:
             raise TypeError(
@@ -58,6 +68,22 @@ class DatasetContract(ABC):
         pass
 
     # endregion Contract Initialization ----------------------------------------
+
+    # region Contract Functions ------------------------------------------------
+
+    
+    def add_attribute(self, name: str, value: str) -> None:
+        """
+        Add an attribute dynamically to the contract class.
+
+        The attribute becomes available to all instances of the contract.
+        This method does not update other contract definitions, such as
+        DATA_COLUMNS, REQUIRED_COLUMNS, or USED_COLUMNS.
+        """
+        setattr(type(self), name, value)
+
+
+    # endregion Contract Functions ---------------------------------------------
 
     # region Dataset Application -----------------------------------------------
 
