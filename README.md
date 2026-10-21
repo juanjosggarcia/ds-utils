@@ -76,6 +76,7 @@ Disponible a través de la fachada pública `ds_utils.preprocessing.preprocessin
   * `plot_model_predictions`: comparativa de series reales frente a predicciones en el eje temporal con cálculo automático o personalizado de métricas (MAE).
   * `plot_model_feature_importance`: gráfico de barras horizontales ordenado para importancias de características o coeficientes lineales.
   * `plot_feature_space_projection`: proyección bidimensional del espacio de variables mediante PCA, t-SNE o UMAP con coloreado por scores o etiquetas.
+  * `plot_confusion_matrix`: visualización de matrices de confusión mediante mapas de calor (heatmaps) para analizar aciertos y errores en problemas de clasificación binaria y multiclase.
 
 * **Previsualización y tablas HTML (`ds_utils.eda.preview_utilities`)**:
   * `preview_dataframe`: renderizado interactivo y estilizado de DataFrames en entornos Jupyter.
@@ -191,7 +192,7 @@ Las dependencias están definidas en `pyproject.toml` según las necesidades de 
 | Componente | Dependencias requeridas | Finalidad principal |
 |---|---|---|
 | **Base** | `numpy>=2.0`, `pandas>=2.2` | Preprocesamiento, auditoría de datos, series temporales y utilidades centrales. |
-| **Extra `eda`** | `matplotlib>=3.9`, `ipython>=8.0`, `jinja2>=3.1`, `tabulate>=0.10.0` | Generación de gráficos, estilos HTML interactivos, renderizado matemático en LaTeX y previsualizaciones en Jupyter. |
+| **Extra `eda`** | `matplotlib>=3.11`, `seaborn>=0.13`, `ipython>=8.0`, `jinja2>=3.1`, `tabulate>=0.10.0` | Generación de gráficos, estilos HTML interactivos, renderizado matemático en LaTeX y previsualizaciones en Jupyter. |
 | **Extra `ml`** | `python-dotenv>=1.0.0`, `scikit-learn>=1.5` | Algoritmos de soporte, proyecciones espaciales y modelos de Machine Learning, junto con la gestión de configuración y credenciales mediante variables de entorno. |
 | **Grupo `dev`** | `pytest>=8.0`, `ruff>=0.12`, `mypy>=1.0`, `ipykernel>=7.3.0` | Suite de pruebas unitarias, formateo, linting, chequeo estático de tipos y cuadernos jupyter en vscode. |
 

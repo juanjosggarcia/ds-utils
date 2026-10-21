@@ -1,7 +1,6 @@
 from ds_utils.eda.preview_config import (
     Alignment,
     Color,
-    DEFAULT_COLOR,
 )
 from ds_utils.preprocessing.preprocessing_config import (
     FEATURES_CONFIG,
@@ -213,7 +212,7 @@ def print_html_table(
     header: str | None = None,
     show_table_headers: bool = True,
     show_table_index: bool = True,
-    header_color: Color = DEFAULT_COLOR, 
+    header_color: Color | None = None, 
     header_align: Alignment = Alignment.LEFT, 
     footer: str | None = None,
     escape_html: bool = True
@@ -246,8 +245,10 @@ def print_html_table(
     show_table_index : bool, default=True
         Whether to display the DataFrame index.
 
-    header_color : Color, default=Color.BLACK
-        Color used for the section header.
+    header_color : Color or None, default=None
+        Color used for the title and bottom border. If ``None``, the title
+        uses the default text color and the bottom border inherits the
+        current text color.
 
     header_align : Alignment, default=Alignment.LEFT
         Horizontal alignment of the section header.
@@ -325,9 +326,12 @@ def print_html_table(
     # Bloque del titulo
     if header:
         html_title = f"""
-            <h2 style='text-align:{header_align.value}; color:{header_color.value}; 
-                    font-size:{header_font_size}; margin:0;'>{header}</h2>
-            <hr style='border:1px solid {header_color.value}; margin:5px 10px 10px 0;'>
+            <h2 style='text-align:{header_align.value};
+                    {"color:" + header_color.value + ";" if header_color is not None else ""}
+                    font-size:{header_font_size}; margin:0;'>
+                {header}
+            </h2>
+            <hr style='{"border:1px solid " + header_color.value + ";" if header_color is not None else ""} margin:5px 10px 10px 0;'>
         """
     else:
         html_title = ""
@@ -357,7 +361,7 @@ def print_html_list(
     items: Iterable[str],
     numbered: bool = False,
     header: str | None = None,
-    header_color: Color = DEFAULT_COLOR,
+    header_color: Color | None = None,
     header_align: Alignment = Alignment.LEFT,
     footer: str | None = None,
     escape_html: bool = True
@@ -380,8 +384,10 @@ def print_html_list(
     header : str or None, default=None
         Optional section title displayed above the list.
 
-    header_color : Color, default=Color.BLACK
-        Color used for the section header and separator line.
+    header_color : Color or None, default=None
+        Color used for the title and bottom border. If ``None``, the title
+        uses the default text color and the bottom border inherits the
+        current text color.
 
     header_align : Alignment, default=Alignment.LEFT
         Horizontal alignment of the section header.
@@ -431,8 +437,12 @@ def print_html_list(
     # Bloque del título
     if header:
         html_title = f"""
-            <h3 style="text-align:{header_align.value}; font-size:{header_font_size}; margin:0; color:{header_color.value};">{header}</h3>
-            <hr style="border:1px solid {header_color.value}; margin:5px 0;">
+            <h2 style='text-align:{header_align.value};
+                    {"color:" + header_color.value + ";" if header_color is not None else ""}
+                    font-size:{header_font_size}; margin:0;'>
+                {header}
+            </h2>
+            <hr style='{"border:1px solid " + header_color.value + ";" if header_color is not None else ""} margin:5px 10px 10px 0;'>
         """
     else:
         html_title = ""
@@ -459,7 +469,7 @@ def print_html_list(
 def print_html_dict(
     content: dict,
     header: str | None = None,
-    header_color: Color = DEFAULT_COLOR,
+    header_color: Color | None = None,
     header_align: Alignment = Alignment.LEFT,
     footer: str | None = None,
     escape_html: bool = True
@@ -478,8 +488,10 @@ def print_html_dict(
     header : str or None, default=None
         Optional section title displayed above the content.
 
-    header_color : Color, default=DEFAULT_COLOR
-        Color used for the section header and separator line.
+    header_color : Color or None, default=None
+        Color used for the title and bottom border. If ``None``, the title
+        uses the default text color and the bottom border inherits the
+        current text color.
 
     header_align : Alignment, default=Alignment.LEFT
         Horizontal alignment of the section header.
@@ -516,7 +528,7 @@ def print_html_dict(
 def print_html_section(
     content: str,
     header: str | None = None,
-    header_color: Color = DEFAULT_COLOR,
+    header_color: Color | None = None,
     header_align: Alignment = Alignment.LEFT,
     footer: str | None = None,
     escape_html: bool = True
@@ -536,8 +548,10 @@ def print_html_section(
     header : str or None, default=None
         Optional section title displayed above the content.
 
-    header_color : Color, default=Color.BLACK
-        Color used for the section header and separator line.
+    header_color : Color or None, default=None
+        Color used for the title and bottom border. If ``None``, the title
+        uses the default text color and the bottom border inherits the
+        current text color.
 
     header_align : Alignment, default=Alignment.LEFT
         Horizontal alignment of the section header.
@@ -573,9 +587,12 @@ def print_html_section(
     # Bloque del título
     if header:
         html_title = f"""
-            <h2 style='text-align:{header_align.value}; color:{header_color.value}; 
-                    font-size:{header_font_size}; margin:0;'>{header}</h2>
-            <hr style='border:1px solid {header_color.value}; margin:5px 10px 10px 0;'>
+            <h2 style='text-align:{header_align.value};
+                    {"color:" + header_color.value + ";" if header_color is not None else ""}
+                    font-size:{header_font_size}; margin:0;'>
+                {header}
+            </h2>
+            <hr style='{"border:1px solid " + header_color.value + ";" if header_color is not None else ""} margin:5px 10px 10px 0;'>
         """
     else:
         html_title = ""
@@ -1469,7 +1486,7 @@ def print_math_section(
 def preview_dataframe(
     df: pd.DataFrame, 
     header: str | None = None, 
-    header_color: Color = DEFAULT_COLOR,
+    header_color: Color | None = None,
     header_align: Alignment = Alignment.LEFT,
     rows: int = 5,
 ) -> None:
@@ -1488,8 +1505,10 @@ def preview_dataframe(
     header : str or None, default=None
         Optional title displayed above the DataFrame.
 
-    header_color : Color, default=Color.BLACK
-        Color used for the title and bottom border.
+    header_color : Color or None, default=None
+        Color used for the title and bottom border. If ``None``, the title
+        uses the default text color and the bottom border inherits the
+        current text color.
 
     header_align : Alignment, default=Alignment.LEFT
         Horizontal alignment of the title.
@@ -1510,11 +1529,15 @@ def preview_dataframe(
     styled_df = df.head(rows).style
 
     if header is not None:
-        caption_style = (
-            f"<h2 style='text-align:{header_align.value}; color:{header_color.value}; font-size:{header_font_size}; "
-            f"border-bottom: 2px solid {header_color.value}; padding-bottom: 5px;'>"
-            f"{header}</h2>"
-        )
+        caption_style = f"""
+            <h2 style='text-align:{header_align.value};
+                    {"color:" + header_color.value + ";" if header_color is not None else ""}
+                    font-size:{header_font_size};
+                    border-bottom: 2px solid {header_color.value if header_color is not None else "currentColor"};
+                    padding-bottom: 5px;'>
+                {header}
+            </h2>
+        """
 
         styled_df = styled_df.set_caption(caption_style) # Necesario para generar/renderizar HTML en pandas
 

@@ -22,7 +22,7 @@ class Color(Enum):
 
 
 # Canonical configuration shared by all preview-related utilities.
-DEFAULT_COLOR = Color.WHITE
-"""
-the default color, which is important for ensuring consistency with the editor's light and dark themes
-"""
+# DEFAULT_COLOR = Color.WHITE
+# """
+# the default color, which is important for ensuring consistency with the editor's light and dark themes
+# """

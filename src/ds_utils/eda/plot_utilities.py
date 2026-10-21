@@ -7,8 +7,10 @@ import numpy as np
 import pandas as pd
 from typing import Literal, Protocol
 from numpy.typing import ArrayLike
+from collections.abc import Sequence
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import seaborn as sns
 
 
 # region Aux Class -------------------------------------------------------------
@@ -463,7 +465,7 @@ def plot_model_predictions(
 
 
 def plot_model_feature_importance(
-    modelo,
+    model,
     X: pd.DataFrame | ArrayLike,
     top_n: int = 15,
     title: str | None = None,
@@ -482,7 +484,7 @@ def plot_model_feature_importance(
 
     Parameters
     ----------
-    modelo : object
+    model : object
         Fitted model or pipeline from which to extract feature importance.
 
     X : pd.DataFrame or array-like
@@ -547,10 +549,10 @@ def plot_model_feature_importance(
     # ---------------------------
     # 2. Pipeline support
     # ---------------------------
-    if hasattr(modelo, "named_steps"):
-        modelo_final = list(modelo.named_steps.values())[-1]
+    if hasattr(model, "named_steps"):
+        modelo_final = list(model.named_steps.values())[-1]
     else:
-        modelo_final = modelo
+        modelo_final = model
 
     # ---------------------------
     # 3. Importancias
@@ -612,6 +614,113 @@ def plot_model_feature_importance(
     plt.show()
 
     return top_feats
+
+
+
+def plot_confusion_matrix(
+    cm: ArrayLike | pd.DataFrame,
+    labels: Sequence[str] | None = None,
+    show_binary_labels: bool = False,
+    title: str = "Confusion Matrix",
+    cmap: str = "viridis",
+    figsize: tuple[int, int] = (6, 5),
+) -> None:
+    """
+    Plot a confusion matrix as a heatmap.
+
+    Parameters
+    ----------
+    cm : ArrayLike or pd.DataFrame
+        Non-empty square confusion matrix. Rows represent true classes
+        and columns represent predicted classes. If a DataFrame is
+        provided, its column names are used as labels by default.
+
+    labels : Sequence[str], optional
+        Class labels displayed on both axes, ordered according to
+        the rows and columns of the confusion matrix. If omitted,
+        DataFrame column names are used when available; otherwise,
+        labels default to "Class 0", "Class 1", etc.
+
+    show_binary_labels : bool, default=False
+        Whether to annotate a binary confusion matrix with TN, FP,
+        FN and TP labels alongside their corresponding values.
+        Only valid for a 2x2 confusion matrix. The first class is
+        interpreted as negative and the second as positive.
+
+    title : str, default="Confusion matrix"
+        Figure title.
+
+    cmap : {"viridis", "plasma", "inferno", "magma", "cividis", "..."}, default="viridis"
+        Colormap used to represent matrix values.
+        Accepts any colormap supported by Matplotlib.
+        Available colormaps:
+        https://matplotlib.org/stable/users/explain/colors/colormaps.html
+
+    figsize : tuple[int, int], default=(6, 5)
+        Figure size.
+    """
+    if labels is None and isinstance(cm, pd.DataFrame):
+        labels = cm.columns.tolist()
+
+    cm = np.asarray(cm)
+
+    if cm.ndim != 2 or cm.shape[0] != cm.shape[1] or cm.size == 0:
+        raise ValueError(
+            "The confusion matrix must be a non-empty square matrix."
+        )
+
+    if labels is None:
+        labels = [f"Class {i}" for i in range(cm.shape[0])]
+    elif len(labels) != cm.shape[0]:
+        raise ValueError(
+            "The number of labels must match the matrix dimensions."
+        )
+
+    if show_binary_labels and cm.shape != (2, 2):
+        raise ValueError(
+            "Binary labels can only be displayed for a 2x2 matrix."
+        )
+
+    if show_binary_labels:
+        annotations = np.array([
+            [
+                f"{bold_matplotlib('TN')}\n{cm[0, 0]:g}",
+                f"{bold_matplotlib('FP')}\n{cm[0, 1]:g}",
+            ],
+            [
+                f"{bold_matplotlib('FN')}\n{cm[1, 0]:g}",
+                f"{bold_matplotlib('TP')}\n{cm[1, 1]:g}",
+            ],
+        ])
+        fmt = ""
+    else:
+        annotations = True
+        fmt = "g"
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    sns.heatmap(
+        cm,
+        annot=annotations,
+        fmt=fmt,
+        cmap=cmap,
+        xticklabels=labels,
+        yticklabels=labels,
+        linewidths=1,
+        linecolor="white",
+        square=True,
+        cbar=True,
+        annot_kws={"size": 12},
+        ax=ax,
+    )
+
+    ax.set_xlabel("Predicted label")
+    ax.set_ylabel("True label")
+    ax.set_title(title)
+
+    fig.tight_layout()
+    plt.show()
+
 
 
 # endregion Plots Functions ----------------------------------------------------
