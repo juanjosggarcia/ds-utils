@@ -244,7 +244,10 @@ def explain_anomalies(
         })
 
     return (
-        pd.DataFrame(explanations)
+        pd.DataFrame(
+            explanations,
+            columns=["timestamp", "score", "summary", "details"],
+        )
         .sort_values(by="score", ascending=ascending)
         .reset_index(drop=True)
     )
