@@ -132,6 +132,17 @@ Disponible a través de `ds_utils.ml.ml_utilities`:
 
 ---
 
+### Entrada y salida de datos (`ds_utils.io`)
+Disponible a través de `ds_utils.io.csv_utilities`:
+
+* **Utilidades de importación y exportación CSV (`ds_utils.io.csv_utilities`)**:
+
+  * `import_csv`: importación de archivos CSV a DataFrames de Pandas, con soporte para los parámetros de `pandas.read_csv()`. Permite mostrar opcionalmente una previsualización del DataFrame en entornos compatibles con el módulo EDA y generar automáticamente la definición de una instancia de un contrato de datos mediante `generate_contract_definition`. Si no se especifica `df_name`, genera un nombre a partir del archivo de origen siguiendo la convención `df_<file_stem>`.
+
+  * `export_csv`: exportación de DataFrames a archivos CSV mediante `pandas.DataFrame.to_csv()`, con soporte para sus parámetros de configuración. Crea automáticamente los directorios de destino que no existan y permite personalizar opciones como el separador, la codificación y la inclusión del índice.
+
+---
+
 ## 3. Instalación
 
 `ds-utils` utiliza `uv` como gestor de paquetes y entorno. La instalación base es deliberadamente ligera y solo depende de `numpy` y `pandas`.
@@ -191,7 +202,7 @@ Las dependencias están definidas en `pyproject.toml` según las necesidades de 
 
 | Componente | Dependencias requeridas | Finalidad principal |
 |---|---|---|
-| **Base** | `numpy>=2.0`, `pandas>=2.2` | Preprocesamiento, auditoría de datos, series temporales y utilidades centrales. |
+| **Base** | `numpy>=2.0`, `pandas>=2.2,<3.0` | Preprocesamiento, auditoría de datos, series temporales y utilidades centrales. |
 | **Extra `eda`** | `matplotlib>=3.11`, `seaborn>=0.13`, `ipython>=8.0`, `jinja2>=3.1`, `tabulate>=0.10.0` | Generación de gráficos, estilos HTML interactivos, renderizado matemático en LaTeX y previsualizaciones en Jupyter. |
 | **Extra `ml`** | `python-dotenv>=1.0.0`, `scikit-learn>=1.5` | Algoritmos de soporte, proyecciones espaciales y modelos de Machine Learning, junto con la gestión de configuración y credenciales mediante variables de entorno. |
 | **Grupo `dev`** | `pytest>=8.0`, `ruff>=0.12`, `mypy>=1.0`, `ipykernel>=7.3.0` | Suite de pruebas unitarias, formateo, linting, chequeo estático de tipos y cuadernos jupyter en vscode. |
@@ -199,6 +210,33 @@ Las dependencias están definidas en `pyproject.toml` según las necesidades de 
 ---
 
 ## 5. Ejemplos de uso rápido
+
+### Importación y exportación de archivos CSV
+
+```python
+import pandas as pd
+
+from ds_utils.io.csv_utilities import import_csv, export_csv
+
+# 1. Importar un dataset de sensores
+df = import_csv(
+    "data/sensor_data.csv",
+    parse_dates=["timestamp"],
+    preview_df=True,
+)
+
+# 2. Procesar el dataset
+df_clean = df.dropna(subset=["temperature"])
+
+# 3. Exportar el dataset procesado
+export_csv(
+    df_clean,
+    "output/clean_sensor_data.csv",
+    index=False,
+)
+
+print("Processed dataset exported successfully.")
+```
 
 ### Diagnóstico e higiene de DataFrames
 ```python
@@ -299,6 +337,8 @@ El directorio [`notebook_samples/`](notebook_samples/) del repositorio incluye n
 notebook_samples/
 ├── base_classes/
 │   └── contract_utilities_demo.ipynb
+├── io/
+│   └── csv_utilities_demo.ipynb
 ├── eda/
 │   ├── math_utilities_demo.ipynb
 │   ├── plot_utilities_demo.ipynb
