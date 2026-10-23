@@ -71,17 +71,88 @@ class DatasetContract(ABC):
 
     # region Contract Functions ------------------------------------------------
 
-    
-    def add_attribute(self, name: str, value: str) -> None:
+    def add_attribute(self, name: str, value: object) -> None:
         """
-        Add an attribute dynamically to the contract class.
+        Add a new attribute dynamically to the contract class.
 
-        The attribute becomes available to all instances of the contract.
+        The attribute is added to the contract class itself, making it
+        available to all instances that do not override the attribute.
+
         This method does not update other contract definitions, such as
         DATA_COLUMNS, REQUIRED_COLUMNS, or USED_COLUMNS.
+
+        Parameters
+        ----------
+        name : str
+            Name of the attribute to add.
+        value : object
+            Value to assign to the new attribute.
         """
         setattr(type(self), name, value)
 
+    def update_attribute(self, name: str, value: object) -> None:
+        """
+        Update an existing class attribute dynamically.
+
+        The attribute is updated on the contract class itself, so the change
+        is visible to all instances that do not override the attribute.
+
+        This method does not update other contract definitions, such as
+        DATA_COLUMNS, REQUIRED_COLUMNS, or USED_COLUMNS.
+
+        Parameters
+        ----------
+        name : str
+            Name of the class attribute to update.
+        value : object
+            New value to assign to the attribute.
+
+        Raises
+        ------
+        AttributeError
+            If the specified attribute does not exist on the contract class.
+        """
+        cls = type(self)
+
+        if not hasattr(cls, name):
+            raise AttributeError(
+                f"Attribute '{name}' does not exist in class '{cls.__name__}'."
+            )
+
+        setattr(cls, name, value)
+
+    def delete_attribute(self, name: str) -> None:
+        """
+        Delete an attribute dynamically from the contract class.
+
+        The attribute is removed from the contract class itself. This change
+        affects all instances that rely on the class attribute, but does not
+        remove instance-level attributes or attributes defined in parent
+        classes.
+
+        This method does not update other contract definitions, such as
+        DATA_COLUMNS, REQUIRED_COLUMNS, or USED_COLUMNS.
+
+        Parameters
+        ----------
+        name : str
+            Name of the class attribute to delete.
+
+        Raises
+        ------
+        AttributeError
+            If the specified attribute does not exist directly on the
+            contract class.
+        """
+        cls = type(self)
+
+        if name not in cls.__dict__:
+            raise AttributeError(
+                f"Attribute '{name}' does not exist directly "
+                f"in class '{cls.__name__}'."
+            )
+
+        delattr(cls, name)       
 
     # endregion Contract Functions ---------------------------------------------
 

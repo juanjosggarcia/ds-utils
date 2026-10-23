@@ -1,6 +1,6 @@
 [project]
 name = "ds-utils"
-version = "0.1.0"
+version = "0.2.0"
 description = "Utilities for data science, EDA, data preprocessing and machine learning"
 readme = "README.md"
 authors = [

@@ -124,7 +124,7 @@ Disponible a través de `ds_utils.ml.ml_utilities`:
 ### Contratos de datos (`ds_utils.base_classes`)
 
 * **Definición y aplicación de contratos** (`ds_utils.base_classes.dataset_contract`):
-  * `DatasetContract`: clase base abstracta para definir contratos de datos, establecer las columnas requeridas y centralizar la validación estructural y la normalización de DataFrames mediante `apply()`. Permite añadir atributos dinámicamente al contrato mediante `add_attribute()`, sin modificar automáticamente los grupos de columnas existentes.
+  * `DatasetContract`: clase base abstracta para definir contratos de datos, establecer las columnas requeridas y centralizar la validación estructural y la normalización de DataFrames mediante `apply()`. Permite gestionar dinámicamente los atributos de la clase mediante `add_attribute()`, `update_attribute()` y `delete_attribute()`, sin modificar automáticamente los grupos de columnas existentes.
 
 * **Utilidades para la creación de contratos** (`ds_utils.base_classes.contract_utilities`):
   * `generate_contract_definition`: generación automática de definiciones de constantes de columna (`COL_<NOMBRE>`, `COL_INDEX`) y grupos de columnas (`DATA_COLUMNS`, `REQUIRED_COLUMNS`, `USED_COLUMNS`) a partir de un DataFrame, siguiendo las convenciones de `CONTRACT_CONFIG`. El código generado está preparado para incorporarse a una subclase de `DatasetContract`.
