@@ -31,10 +31,13 @@ def get_sql_engine(
     ----------
     url_env_var : str
         Name of the environment variable containing the database URL.
+
     username_env_var : str
         Name of the environment variable containing the database username.
+
     password_env_var : str
         Name of the environment variable containing the database password.
+
     **engine_kwargs : Any
         Additional keyword arguments passed to sqlalchemy.create_engine().
 
@@ -51,6 +54,12 @@ def get_sql_engine(
         If a required environment variable is not defined or is empty.
     Exception
         If the connection check fails.
+
+    Notes
+    -----
+    Environment variables must be available in the execution
+    environment before calling this function. The `python-dotenv`
+    package can optionally be used to load them from a `.env` file.
     """
     try:
         from sqlalchemy import create_engine
@@ -109,10 +118,13 @@ def get_mongo_client(
     ----------
     url_env_var : str
         Name of the environment variable containing the MongoDB URI.
+
     username_env_var : str
         Name of the environment variable containing the MongoDB username.
+
     password_env_var : str
         Name of the environment variable containing the MongoDB password.
+
     **client_kwargs : Any
         Additional keyword arguments passed to pymongo.MongoClient().
 
@@ -129,6 +141,12 @@ def get_mongo_client(
         If a required environment variable is not defined or is empty.
     Exception
         If the connection or authentication check fails.
+
+    Notes
+    -----
+    Environment variables must be available in the execution
+    environment before calling this function. The `python-dotenv`
+    package can optionally be used to load them from a `.env` file.
     """
     try:
         from pymongo import MongoClient

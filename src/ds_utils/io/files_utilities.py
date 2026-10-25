@@ -50,6 +50,7 @@ def _prepare_output_file(
     ----------
     file_path : Path
         Destination path.
+        
     overwrite : bool, default=False
         Whether to allow overwriting an existing file.
 
@@ -388,11 +389,14 @@ def export_python_to_json(
         Python object to serialize. The object must be compatible
         with the JSON serialization rules or a custom encoder must
         be provided through dump_json_kwargs.
+
     file_path : Path
         Destination path for the JSON file.
+
     overwrite : bool, default=False
         Whether to overwrite the destination file if it already exists.
         If False, a FileExistsError is raised when the file exists.
+
     **dump_json_kwargs
         Additional keyword arguments passed directly to json.dump().
 

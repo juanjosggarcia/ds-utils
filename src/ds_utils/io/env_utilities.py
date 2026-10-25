@@ -33,6 +33,14 @@ def get_required_env_var(name: str) -> str:
     ValueError
         If the environment variable is not defined or contains
         an empty value.
+
+    Notes
+    -----
+    Environment variables must be available in the execution
+    environment before calling this function. For environment-specific
+    configuration, `python-dotenv` can optionally be installed
+    (`pip install python-dotenv`) to load variables from a `.env` file
+    using `load_dotenv()` from the `dotenv` module.
     """
     value = os.getenv(name)
 

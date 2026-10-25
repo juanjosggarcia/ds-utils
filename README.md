@@ -156,6 +156,14 @@ Las integraciones con librerías externas utilizan importaciones lazy cuando cor
 
 ---
 
+### Utilidades comunes (`ds_utils.core`)
+
+* **Utilidades de ejecución paralela (`ds_utils.core.parallel_utilities`):**
+
+  * `parallelize`: ejecuta una función concurrentemente sobre los elementos de un iterable mediante hilos (`ThreadPoolExecutor`). Devuelve dos listas separadas: una con los resultados de las ejecuciones completadas correctamente y otra con los errores producidos. Cada entrada conserva el elemento original asociado al resultado o al error. Los resultados y errores se recopilan en orden de finalización, y las excepciones se capturan para permitir que el procesamiento continúe con las demás tareas.
+
+---
+
 ## 3. Instalación
 
 `ds-utils` utiliza `uv` como gestor de paquetes y entorno. La instalación base es deliberadamente ligera y solo depende de `numpy` y `pandas`.

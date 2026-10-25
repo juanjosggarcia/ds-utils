@@ -3,11 +3,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Callable, Iterable, TypeVar, TypedDict
 
 
+# region Aux Class -------------------------------------------------------------
+
 T = TypeVar("T")
 R = TypeVar("R")
-
-CPU_THREADS = os.cpu_count() or 1
-
 
 class ParallelResult[T, R](TypedDict):
     item: T
@@ -18,6 +17,20 @@ class ParallelError[T](TypedDict):
     item: T
     error: dict[str, str]
 
+# endregion Aux Class ----------------------------------------------------------
+
+# region CONSTANTS -------------------------------------------------------------
+
+CPU_THREADS = os.cpu_count() or 1
+
+# endregion CONSTANTS ----------------------------------------------------------
+
+# region Aux Functions ---------------------------------------------------------
+
+# region Aux Functions ---------------------------------------------------------
+
+
+# region Thread Functions ------------------------------------------------------
 
 def parallelize(
     func: Callable[[T], R],
@@ -80,3 +93,10 @@ def parallelize(
                 })
 
     return results, errors
+
+# endregion Thread Functions ---------------------------------------------------
+
+
+# region Functions with "lazy import" ------------------------------------------
+
+# endregion Functions with "lazy import" ---------------------------------------
