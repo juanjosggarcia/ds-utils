@@ -133,13 +133,26 @@ Disponible a través de `ds_utils.ml.ml_utilities`:
 ---
 
 ### Entrada y salida de datos (`ds_utils.io`)
-Disponible a través de `ds_utils.io.csv_utilities`:
 
-* **Utilidades de importación y exportación CSV (`ds_utils.io.csv_utilities`)**:
+* **Utilidades de importación y exportación de archivos (`ds_utils.io.files_utilities`):**
 
-  * `import_csv`: importación de archivos CSV a DataFrames de Pandas, con soporte para los parámetros de `pandas.read_csv()`. Permite mostrar opcionalmente una previsualización del DataFrame en entornos compatibles con el módulo EDA y generar automáticamente la definición de una instancia de un contrato de datos mediante `generate_contract_definition`. Si no se especifica `df_name`, genera un nombre a partir del archivo de origen siguiendo la convención `df_<file_stem>`.
+  * `import_csv_to_df`: importa archivos CSV a DataFrames de Pandas mediante `pandas.read_csv()`, con soporte para sus parámetros de configuración. Permite mostrar opcionalmente una previsualización del DataFrame en entornos compatibles con el módulo EDA.
+  * `export_df_to_csv`: exporta DataFrames a archivos CSV mediante `pandas.DataFrame.to_csv()`, con soporte para sus parámetros de configuración. Crea automáticamente los directorios de destino que no existan y permite personalizar opciones como el separador, la codificación y la inclusión del índice. Permite controlar la sobrescritura de archivos existentes.
+  * `import_parquet_to_df`: importa archivos Parquet a DataFrames de Pandas. Utiliza PyArrow como motor de lectura y permite mostrar opcionalmente una previsualización del DataFrame en entornos compatibles con el módulo EDA.
+  * `export_df_to_parquet`: exporta DataFrames a archivos Parquet mediante Pandas y PyArrow. Crea automáticamente los directorios de destino que no existan y permite controlar la sobrescritura de archivos existentes.
+  * `import_json_to_python`: importa archivos JSON y devuelve el objeto Python correspondiente a su estructura, como un diccionario, una lista o un valor escalar.
+  * `export_python_to_json`: serializa objetos Python compatibles con JSON y los guarda en archivos, con opciones de configuración para la serialización.
 
-  * `export_csv`: exportación de DataFrames a archivos CSV mediante `pandas.DataFrame.to_csv()`, con soporte para sus parámetros de configuración. Crea automáticamente los directorios de destino que no existan y permite personalizar opciones como el separador, la codificación y la inclusión del índice.
+* **Utilidades de bases de datos (`ds_utils.io.databases_utilities`):**
+
+  * `get_sql_engine`: crea un motor de conexión SQLAlchemy a partir de las credenciales almacenadas en variables de entorno. Comprueba la conectividad antes de devolver el motor y libera los recursos si la validación falla.
+  * `get_mongo_client`: crea un cliente MongoDB a partir de las credenciales almacenadas en variables de entorno. Ejecuta una operación `ping` para validar la conectividad antes de devolver el cliente y lo cierra si la validación falla.
+
+* **Utilidades HTTP (`ds_utils.io.http_utilities`):**
+
+  * `get_http_session`: crea una sesión HTTP configurada mediante `requests.Session()`, establece cabeceras predeterminadas y permite configurar la autenticación Bearer mediante una variable de entorno. Valida la existencia del token cuando se solicita autenticación.
+
+Las integraciones con librerías externas utilizan importaciones lazy cuando corresponde, de modo que las dependencias específicas solo sean necesarias para ejecutar las funcionalidades que las utilizan. Si falta una dependencia requerida, se informa mediante un `ImportError` con instrucciones para instalarla.
 
 ---
 
@@ -198,14 +211,47 @@ uv sync --all-extras --dev
 
 ## 4. Dependencias y Extras
 
-Las dependencias están definidas en `pyproject.toml` según las necesidades de cada flujo de trabajo:
+Las dependencias se organizan en `pyproject.toml` según su finalidad, para mantener una instalación base ligera y evitar instalar librerías que no se necesitan.
 
-| Componente | Dependencias requeridas | Finalidad principal |
-|---|---|---|
-| **Base** | `numpy>=2.0`, `pandas>=2.2,<3.0` | Preprocesamiento, auditoría de datos, series temporales y utilidades centrales. |
-| **Extra `eda`** | `matplotlib>=3.11`, `seaborn>=0.13`, `ipython>=8.0`, `jinja2>=3.1`, `tabulate>=0.10.0` | Generación de gráficos, estilos HTML interactivos, renderizado matemático en LaTeX y previsualizaciones en Jupyter. |
-| **Extra `ml`** | `python-dotenv>=1.0.0`, `scikit-learn>=1.5` | Algoritmos de soporte, proyecciones espaciales y modelos de Machine Learning, junto con la gestión de configuración y credenciales mediante variables de entorno. |
-| **Grupo `dev`** | `pytest>=8.0`, `ruff>=0.12`, `mypy>=1.0`, `ipykernel>=7.3.0` | Suite de pruebas unitarias, formateo, linting, chequeo estático de tipos y cuadernos jupyter en vscode. |
+### 4.1. Dependencias por componente
+
+| Componente                   | Dependencias requeridas                                                                | Finalidad principal                                                                                                 |
+| ---------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Base**                     | `numpy>=2.0`, `pandas>=2.2,<3.0`                                                       | Preprocesamiento, auditoría de datos, series temporales y utilidades centrales.                                     |
+| **Extra `eda`**              | `matplotlib>=3.11`, `seaborn>=0.13`, `ipython>=8.0`, `jinja2>=3.1`, `tabulate>=0.10.0` | Generación de gráficos, estilos HTML interactivos, renderizado matemático en LaTeX y previsualizaciones en Jupyter. |
+| **Extra `ml`**               | `scikit-learn>=1.5`                                                                    | Algoritmos de soporte, proyecciones espaciales y modelos de Machine Learning.                                       |
+| **Integración HTTP**         | `requests>=2.32.0`                                                                     | Creación de sesiones HTTP y comunicación con servicios web.                                                         |
+| **Integración SQL**          | `sqlalchemy>=2.1.6` y el controlador correspondiente al motor utilizado                | Gestión de conexiones y operaciones con bases de datos SQL.                                                         |
+| **Integración MongoDB**      | `pymongo>=4.19.0`                                                                      | Conexión y operaciones con bases de datos MongoDB.                                                                  |
+| **Integración Parquet**      | `pyarrow>=26.0.0`                                                                      | Lectura y escritura de archivos Parquet.                                                                            |
+| **Configuración de entorno** | `python-dotenv>=1.2.4`                                                                 | Carga de variables de entorno desde archivos `.env`, cuando sea necesario.                                          |
+| **Grupo `dev`**              | `pytest>=8.0`, `ruff>=0.12`, `mypy>=1.0`, `ipykernel>=7.3.0`                           | Pruebas unitarias, linting, análisis estático de tipos y ejecución de cuadernos Jupyter en VS Code.                 |
+
+Las versiones indicadas corresponden a las restricciones definidas para el proyecto y deben mantenerse sincronizadas con `pyproject.toml`.
+
+### 4.2. Importaciones lazy y dependencias opcionales
+
+Para evitar sobrecargar la instalación y reducir el acoplamiento entre componentes, las integraciones con librerías externas utilizan **importaciones lazy** cuando corresponde.
+
+Esto implica que las dependencias opcionales se importan únicamente cuando se ejecuta una funcionalidad que las necesita, en lugar de importarse automáticamente al cargar toda la biblioteca.
+
+Por ejemplo:
+
+* Las utilidades HTTP requieren `requests`.
+* Las utilidades SQL requieren `SQLAlchemy` y el controlador correspondiente al motor de base de datos.
+* Las utilidades MongoDB requieren `PyMongo`.
+* Las funciones de lectura y escritura Parquet requieren `PyArrow`.
+* Las funciones de previsualización pueden requerir dependencias del componente `eda`.
+
+Cuando falta una dependencia necesaria, la funcionalidad correspondiente informa del problema mediante un `ImportError` con instrucciones para instalar la librería requerida.
+
+**Importante:** las importaciones lazy no instalan dependencias automáticamente ni las convierten en dependencias opcionales por sí solas. La configuración de dependencias de instalación se define por separado en `pyproject.toml`.
+
+### 4.3. Entorno de desarrollo
+
+El grupo `dev` contiene las dependencias utilizadas para desarrollar, probar y mantener el proyecto.
+
+Este grupo puede incluir tanto herramientas de desarrollo como librerías de integración necesarias para ejecutar las pruebas de los distintos componentes. Su presencia en `dev` no implica que todas esas librerías deban instalarse al utilizar la biblioteca en producción.
 
 ---
 
@@ -338,7 +384,7 @@ notebook_samples/
 ├── base_classes/
 │   └── contract_utilities_demo.ipynb
 ├── io/
-│   └── csv_utilities_demo.ipynb
+│   └── files_utilities_demo.ipynb
 ├── eda/
 │   ├── math_utilities_demo.ipynb
 │   ├── plot_utilities_demo.ipynb
